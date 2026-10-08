@@ -22,4 +22,4 @@ Status: planning.
 
 ## Author
 
-Built by Marty Tremblay, enterprise architect at [Aspiro](https://www.aspiroconsulting.ca/).
+Built by Marty Tremblay, enterprise architect at [Aspiro Consulting](https://www.aspiroconsulting.ca/).
