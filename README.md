@@ -20,6 +20,12 @@ The reasoning matters as much as the code. Each design choice is recorded as an 
 
 Status: planning.
 
+## How it's built
+
+This project is vibe coded: the code, ADR drafts and documentation are written with [Claude Code](https://claude.com/claude-code), an AI coding agent, and commits it co-authored carry a `Co-Authored-By: Claude` trailer. That is part of the experiment. An AI agent helping build a governed path for AI agents is a small version of the question enterprises now face about their own delivery teams.
+
+The agent works under the same kind of guardrails the gateway enforces. Its standing instructions are in [CLAUDE.md](CLAUDE.md): safety rules for the device, hard bounds, no secrets in the repo, plan before structural changes, small reviewable commits, and verification against the real device before anything is called done. Architecture decisions, risk tolerance and anything touching the boiler's safety stay with the human.
+
 ## Author
 
 Built by Marty Tremblay, enterprise architect at [Aspiro Consulting](https://www.aspiroconsulting.ca/).
