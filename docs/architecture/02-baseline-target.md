@@ -229,24 +229,29 @@ flowchart TB
         nabu["Nabu Casa"]
     end
 
-    subgraph lan["Home LAN (no inbound ports for the lab)"]
+    subgraph lan["Household network (no inbound ports for the lab)"]
         laptop["Laptop<br/>(MCP clients)"]
-        adg["AdGuard Home<br/>*.lab.domain to Zoraxy"]
+        adg["AdGuard Home x2 (synced)<br/>*.lab.domain to Zoraxy"]
         zx["Zoraxy<br/>TLS termination,<br/>wildcard certificate"]
-        subgraph pve["Proxmox host"]
-            kclxc["LXC: Keycloak + PostgreSQL<br/>firewall: only Zoraxy"]
-            gwlxc["LXC: MCP gateway<br/>holds device key<br/>firewall: only Zoraxy"]
-        end
         ha["Home Assistant"]
         esp["ESPHome controller<br/>API only, web server removed"]
     end
 
+    router{{"UniFi router<br/>lab allow list"}}
+
+    subgraph labnet["Lab VLAN (separate bridge on one Proxmox node)"]
+        kclxc["LXC: Keycloak + PostgreSQL"]
+        gwlxc["LXC: MCP gateway<br/>holds device key"]
+    end
+
     laptop -- "DNS" --> adg
     laptop -- "HTTPS 443" --> zx
-    zx -- "HTTP (bridge)" --> kclxc
-    zx -- "HTTP (bridge)" --> gwlxc
-    gwlxc -- "HTTPS via Zoraxy<br/>(signing keys)" --> zx
-    gwlxc -- "6053 Noise" --> esp
+    zx -- "HTTP" --> router
+    router -- "only from Zoraxy" --> kclxc
+    router -- "only from Zoraxy" --> gwlxc
+    gwlxc -- "HTTPS (signing keys),<br/>DNS, 6053" --> router
+    router --> zx
+    router --> esp
     ha -- "6053 Noise" --> esp
     zx -- "DNS-01 challenge" --> desec
     zx -- "ACME" --> le
@@ -255,13 +260,17 @@ flowchart TB
 
 ### Network flows
 
+Every flow between the lab VLAN and the household network crosses the router, which allows only the flows below and blocks the rest.
+
 | From | To | Port | Purpose |
 |---|---|---|---|
 | MCP client | Zoraxy | 443 | MCP calls; Keycloak sign-in |
-| Zoraxy | Keycloak LXC | 8080 | Proxied Keycloak (only source allowed) |
-| Zoraxy | Gateway LXC | to be set | Proxied MCP endpoint (only source allowed) |
+| Zoraxy | Keycloak LXC (lab VLAN) | 8080 | Proxied Keycloak (only source allowed) |
+| Zoraxy | Gateway LXC (lab VLAN) | to be set | Proxied MCP endpoint (only source allowed) |
+| Lab VLAN | AdGuard Home | 53 | Name resolution |
 | Gateway LXC | Zoraxy | 443 | Keycloak discovery and signing keys, using the public HTTPS name so the issuer matches |
-| Gateway LXC | ESPHome controller | 6053 | Native API (Noise) |
+| Gateway LXC | ESPHome controller | 6053 | Native API (Noise); the only lab-to-device flow |
+| Lab VLAN | Internet | 443 | Package and image updates |
 | Home Assistant | ESPHome controller | 6053 | Unchanged |
 | Zoraxy | deSEC, Let's Encrypt | 443 | Certificate issuance and renewal only |
 
@@ -274,6 +283,7 @@ The ESPHome native API allows several clients at once (`max_connections` default
 | Ungoverned direct path (web server) | ADR 0001 | Done |
 | No identity for AI clients | ADR 0004, ADR 0005; Keycloak setup | Keycloak being installed |
 | No TLS on the LAN for lab services | ADR 0006; deSEC, Zoraxy, AdGuard | Being set up |
+| Lab work could affect household services | ADR 0006 (amended): lab VLAN, separate bridge, router rules | Being set up |
 | No governed API for the device | Gateway, read-only first (P8) | Not started |
 | No bounds stricter than the device | Gateway policy | Not started |
 | No human approval for high-risk actions | Approval ADR | Decision open |

@@ -62,7 +62,7 @@ This is a gas appliance in an occupied house.
 - Transport: Streamable HTTP only, MCP spec revision 2026-07-28; localhost by default, LAN only with TLS + auth, no internet (ADR 0003).
 - Auth: OAuth 2.1; gateway is a resource server only, separate authorization server; per-tool scopes `boiler:read` / `boiler:write`, no hierarchy; no token passthrough; fail closed (ADR 0004).
 - Identity provider: Keycloak 26.8.x (pinned) in a Proxmox LXC with PostgreSQL; resource-indicators feature on; clients pre-registered (public, PKCE S256); DCR blocked; 5-minute access tokens; test that `aud` equals the gateway's address after every upgrade (ADR 0005).
-- Hosting/TLS: gateway and Keycloak in separate Proxmox LXCs behind Zoraxy (TLS termination, LAN only); wildcard `*.lab.<domain>` via Let's Encrypt DNS-01 on a subdomain delegated to deSEC with a TXT-only scoped token; AdGuard Home rewrites; Proxmox firewall allows only Zoraxy to the service ports; never log `Authorization` headers (ADR 0006).
+- Hosting/TLS: gateway and Keycloak in separate Proxmox LXCs behind Zoraxy (TLS termination, LAN only); wildcard `*.lab.<domain>` via Let's Encrypt DNS-01 on a subdomain delegated to deSEC with a TXT-only scoped token; AdGuard Home rewrites (two synced servers); lab containers on a dedicated lab VLAN via a separate bridge on one node, with UniFi rules between lab and household networks (no Proxmox firewall, so household services are never affected); never log `Authorization` headers (ADR 0006).
 
 ## Decisions still open
 
