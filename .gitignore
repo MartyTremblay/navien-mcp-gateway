@@ -1,6 +1,7 @@
 # Secrets and local-only notes
 .env
 CLAUDE.local.md
+private/
 *.key
 secrets.*
 
