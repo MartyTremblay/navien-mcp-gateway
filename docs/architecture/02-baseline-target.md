@@ -231,8 +231,8 @@ flowchart TB
 
     subgraph lan["Household network (no inbound ports for the lab)"]
         laptop["Laptop<br/>(MCP clients)"]
-        adg["AdGuard Home x2 (synced)<br/>*.lab.domain to Zoraxy"]
-        zx["Zoraxy<br/>TLS termination,<br/>wildcard certificate"]
+        adg["AdGuard Home x2 (synced)<br/>*.lab.domain to lab Zoraxy"]
+        hzx["Household Zoraxy<br/>(not used by the lab)"]
         ha["Home Assistant"]
         esp["ESPHome controller<br/>API only, web server removed"]
     end
@@ -240,17 +240,19 @@ flowchart TB
     router{{"UniFi router<br/>lab allow list"}}
 
     subgraph labnet["Lab VLAN (separate bridge on one Proxmox node)"]
+        zx["LXC: lab Zoraxy<br/>TLS termination,<br/>*.lab wildcard"]
         kclxc["LXC: Keycloak + PostgreSQL"]
         gwlxc["LXC: MCP gateway<br/>holds device key"]
     end
 
     laptop -- "DNS" --> adg
-    laptop -- "HTTPS 443" --> zx
-    zx -- "HTTP" --> router
-    router -- "only from Zoraxy" --> kclxc
-    router -- "only from Zoraxy" --> gwlxc
-    gwlxc -- "HTTPS (signing keys),<br/>DNS, 6053" --> router
-    router --> zx
+    laptop -- "HTTPS 443" --> router
+    router -- "443 only" --> zx
+    zx -- "HTTP (inside lab)" --> kclxc
+    zx -- "HTTP (inside lab)" --> gwlxc
+    gwlxc -- "signing keys via<br/>lab Zoraxy" --> zx
+    gwlxc -- "DNS 53, device 6053" --> router
+    router --> adg
     router --> esp
     ha -- "6053 Noise" --> esp
     zx -- "DNS-01 challenge" --> desec
@@ -260,19 +262,20 @@ flowchart TB
 
 ### Network flows
 
-Every flow between the lab VLAN and the household network crosses the router, which allows only the flows below and blocks the rest.
+Every flow between the lab VLAN and the household network crosses the router, which allows only the flows marked "router" below and blocks the rest. Flows inside the lab VLAN do not reach the router and are not filtered.
 
 | From | To | Port | Purpose |
 |---|---|---|---|
-| MCP client | Zoraxy | 443 | MCP calls; Keycloak sign-in |
-| Zoraxy | Keycloak LXC (lab VLAN) | 8080 | Proxied Keycloak (only source allowed) |
-| Zoraxy | Gateway LXC (lab VLAN) | to be set | Proxied MCP endpoint (only source allowed) |
-| Lab VLAN | AdGuard Home | 53 | Name resolution |
-| Gateway LXC | Zoraxy | 443 | Keycloak discovery and signing keys, using the public HTTPS name so the issuer matches |
-| Gateway LXC | ESPHome controller | 6053 | Native API (Noise); the only lab-to-device flow |
-| Lab VLAN | Internet | 443 | Package and image updates |
+| MCP client (household) | Lab Zoraxy | 443 | MCP calls; Keycloak sign-in (router) |
+| Owner's admin machine | Lab Zoraxy | admin port | Proxy configuration (router) |
+| Lab Zoraxy | Keycloak LXC | 8080 | Proxied Keycloak (inside lab) |
+| Lab Zoraxy | Gateway LXC | to be set | Proxied MCP endpoint (inside lab) |
+| Lab VLAN | AdGuard Home | 53 | Name resolution (router) |
+| Gateway LXC | Lab Zoraxy | 443 | Keycloak discovery and signing keys, using the public HTTPS name so the issuer matches (inside lab) |
+| Gateway LXC | ESPHome controller | 6053 | Native API (Noise); the only lab-to-device flow (router) |
+| Lab VLAN | Internet | 443 | Package and image updates (router) |
 | Home Assistant | ESPHome controller | 6053 | Unchanged |
-| Zoraxy | deSEC, Let's Encrypt | 443 | Certificate issuance and renewal only |
+| Lab Zoraxy | deSEC, Let's Encrypt | 443 | Certificate issuance and renewal only (router) |
 
 The ESPHome native API allows several clients at once (`max_connections` defaults to 5 on ESP32), so the gateway and Home Assistant can both stay connected.
 
@@ -283,7 +286,7 @@ The ESPHome native API allows several clients at once (`max_connections` default
 | Ungoverned direct path (web server) | ADR 0001 | Done |
 | No identity for AI clients | ADR 0004, ADR 0005; Keycloak setup | Keycloak being installed |
 | No TLS on the LAN for lab services | ADR 0006; deSEC, Zoraxy, AdGuard | Being set up |
-| Lab work could affect household services | ADR 0006 (amended): lab VLAN, separate bridge, router rules | Being set up |
+| Lab work could affect household services | ADR 0006 (amended): lab VLAN, separate bridge, dedicated lab proxy, router rules | Being set up |
 | No governed API for the device | Gateway, read-only first (P8) | Not started |
 | No bounds stricter than the device | Gateway policy | Not started |
 | No human approval for high-risk actions | Approval ADR | Decision open |

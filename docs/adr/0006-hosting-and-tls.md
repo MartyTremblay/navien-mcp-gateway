@@ -1,6 +1,6 @@
 # 0006. Hosting and TLS on the local network
 
-Status: accepted (2026-10-08), amended the same day: lab network separation, DNS redundancy and certificate fallback
+Status: accepted (2026-10-08), amended the same day: lab network separation, a dedicated lab reverse proxy, DNS redundancy and certificate fallback
 
 Principles: applies P1 (least privilege, here for infrastructure credentials), P6 (secrets stay server-side), P7 (fail safe) and P9 (do not disrupt existing systems).
 
@@ -35,37 +35,47 @@ Option 1, delegating `lab.<domain>` to deSEC, with this layout:
 
 - The gateway runs in its own Proxmox LXC container. The device key exists only there.
 - Keycloak runs in a separate LXC container with its PostgreSQL database (ADR 0005).
-- Zoraxy terminates TLS for both and forwards to the containers.
-- Both containers sit on a **dedicated lab VLAN**, attached through a separate lab bridge on one Proxmox node (see Network controls).
+- A **dedicated lab Zoraxy** terminates TLS for both and forwards to them. The household Zoraxy is not used for the lab.
+- All three containers sit on a **dedicated lab VLAN**, attached through a separate lab bridge on one Proxmox node (see Network controls).
 
 **Names and certificates**
 
 - Service names live under `lab.<domain>`, for example `auth.lab.<domain>` for Keycloak and `boiler.lab.<domain>` for the gateway.
-- Zoraxy obtains one wildcard certificate, `*.lab.<domain>`, through deSEC. A wildcard keeps individual service names out of the public Certificate Transparency logs, where every Let's Encrypt certificate is published.
-- The deSEC token used by Zoraxy is restricted to TXT records at `_acme-challenge` names under the lab subdomain, with no permission to create or delete domains or manage tokens.
+- The lab Zoraxy obtains one wildcard certificate, `*.lab.<domain>`, through deSEC. A wildcard keeps individual service names out of the public Certificate Transparency logs, where every Let's Encrypt certificate is published.
+- The deSEC token, held only by the lab Zoraxy, is restricted to TXT records at `_acme-challenge` names under the lab subdomain, with no permission to create or delete domains or manage tokens.
 
 **Name resolution**
 
-- AdGuard Home rewrites the lab names to Zoraxy's local address. No public DNS records point at private addresses.
+- The household AdGuard Home servers rewrite the lab names to the lab Zoraxy's address, so household clients can reach the lab. Lab containers use the same DNS servers. No public DNS records point at private addresses.
+- AdGuard Home stays shared. Household clients need the lab rewrite anyway, and DNS on port 53 gives the lab no way to reach household services. A separate lab DNS server would add upkeep without reducing risk much.
 
 **Network controls**
 
-- Lab containers live on their own VLAN and subnet, separate from the household network. Traffic between the two passes through the router, which enforces a short allow list: Zoraxy to the lab service ports; the lab to the DNS servers, to Zoraxy (for Keycloak's public HTTPS name) and to the device's native API; the lab outbound to the internet for updates. Everything else between the household network and the lab is blocked.
-- In the containers, the gateway and Keycloak listen on their container address rather than localhost, because Zoraxy has to reach them. The router rules make up for that: a client on the household network cannot skip TLS by connecting to a container directly.
+- Lab containers live on their own VLAN and subnet, separate from the household network. Traffic between the two passes through the router, which enforces a short allow list:
+  - household network to the lab Zoraxy on 443 (HTTPS only);
+  - the owner's admin machine to the lab Zoraxy's admin interface;
+  - the lab to the DNS servers on 53;
+  - the gateway container to the device's native API;
+  - the lab outbound to the internet for updates.
+
+  Everything else between the household network and the lab is blocked.
+- **Why a dedicated lab proxy.** A reverse proxy routes by hostname, so anything that can reach it can ask for any site it serves. If the lab used the household Zoraxy, every lab container could reach household services through it, which would undo the VLAN separation. The lab proxy also keeps lab changes off a proxy the household depends on, and keeps lab bearer tokens and the lab's certificate credential out of the household proxy. Separate ingress per environment is standard enterprise practice.
+- In the containers, the gateway and Keycloak listen on their container address rather than localhost, because the lab Zoraxy has to reach them. The router rules make up for that: a client on the household network cannot reach a lab service except through the lab proxy over HTTPS.
+- **Traffic inside the lab is not filtered.** Containers on the same VLAN reach each other directly, without passing through the router, so any lab container can reach Keycloak's HTTP port. Everything in the lab belongs to this project, so this is accepted as the normal trust level of one network segment.
 - The lab VLAN is attached through a **separate bridge on one node**, not by making the cluster's existing bridge VLAN-aware. That bridge carries every household service on the node, and changing it is a production change. Adding a new bridge leaves it untouched.
 - Considered and not chosen: the Proxmox firewall per container. It gives finer-grained control, but enabling it is a cluster-wide switch, and the host-level rules it brings would block existing household services (for example a node that serves NFS and SMB) unless host rules are turned off on every node first. The owner's priority is that lab work must not risk everyday services, so lab enforcement moves to the router, where it is scoped to the lab network.
-- Zoraxy is not reachable from the internet. If that ever changes, the lab hosts must first be restricted to local source addresses in Zoraxy, or a request to the public address with a lab `Host` header could reach them.
+- Neither Zoraxy is reachable from the internet. If that ever changes, it needs its own review before any port is opened.
 
 **Fallback**
 
-- The current DNS host's control panel does not offer NS records, so the delegation needs its support team. If they decline, or deSEC does not accept a subdomain of a domain registered elsewhere, Zoraxy issues the lab wildcard with the DNS-challenge setup it already uses for the main domain (option 2). That reuses an existing, broader credential rather than adding a new one, and the trade-off is recorded here.
+- The current DNS host's control panel does not offer NS records, so the delegation needs its support team. If they decline, or deSEC does not accept a subdomain of a domain registered elsewhere, the household Zoraxy issues the lab wildcard with the DNS-challenge setup it already uses for the main domain (option 2), and the certificate is copied to the lab Zoraxy at each renewal (every 60 to 90 days). That keeps the broader credential out of the lab, at the cost of a manual step. Copying the broader credential into the lab Zoraxy is not acceptable.
 - CNAME delegation of `_acme-challenge` to a deSEC-hosted name was also considered: Let's Encrypt says "you can use CNAME records or NS records to delegate answering the challenge to other DNS zones". It was not possible because deSEC had suspended new registrations under its free `dedyn.io` domain.
 
 ## Consequences
 
 - Certificates are publicly trusted, so MCP clients, Python and Node work without installing a custom root certificate.
 - No inbound ports are opened for the gateway or Keycloak, in keeping with ADR 0003.
-- **Zoraxy sees bearer tokens.** It terminates TLS, so access tokens pass through it in clear text and travel unencrypted from Zoraxy to the lab containers. This is normal for TLS-terminating ingress in an enterprise. It is accepted here because the path is internal, the router allows only Zoraxy into the lab service ports, and tokens live for 5 minutes. Zoraxy and its logs must not record `Authorization` headers.
+- **The lab Zoraxy sees bearer tokens.** It terminates TLS, so access tokens pass through it in clear text and travel unencrypted from it to the lab containers. The household Zoraxy never sees them. This is normal for TLS-terminating ingress in an enterprise. It is accepted here because that path stays inside the lab VLAN and tokens live for 5 minutes. Zoraxy and its logs must not record `Authorization` headers.
 - **Data location.** The lab subdomain's public DNS is hosted in Germany. It holds only public records (the zone itself and short-lived `_acme-challenge` TXT records). Local names resolve through AdGuard Home and never reach deSEC.
 - **Provider continuity.** deSEC depends on donations. If it stops operating, the acme-dns fallback above replaces it. Only renewals are affected, so there is up to 90 days to switch.
 - **DNSSEC.** deSEC signs the lab zone automatically. Delegation works whether or not the main domain is signed. If the main domain is signed later, deSEC's DS record must be added at the current DNS host.
@@ -74,6 +84,7 @@ Option 1, delegating `lab.<domain>` to deSEC, with this layout:
 - **Configuration to verify during setup:**
   - Keycloak behind a proxy needs its public hostname and forwarded-header settings, or tokens will carry the wrong issuer and the gateway will reject them.
   - The MCP spec asks servers to send `X-Accel-Buffering: no` on SSE streams so proxies don't buffer them. Whether Zoraxy buffers SSE responses must be tested.
+- **One more service to run.** The lab Zoraxy needs updates and its own certificate renewal, like the household one.
 - **Lab services are pinned to one node.** They cannot migrate to other nodes unless those nodes get the same lab bridge. Acceptable for a lab.
 - **The router becomes the lab's enforcement point.** Its rules are part of the security design and are checked in each increment's compliance review.
 - The domain's real name stays out of this repository. Hostnames are written as `lab.<domain>`, with the actual values in local configuration.
