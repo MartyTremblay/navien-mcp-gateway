@@ -77,4 +77,3 @@ All ten [architecture principles](00-principles.md) apply. The ones that most sh
 ## Next
 
 - Baseline and target architecture (phases B to D).
-- Hosting: where the gateway runs, and TLS on the local network.

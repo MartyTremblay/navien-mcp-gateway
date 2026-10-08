@@ -62,6 +62,7 @@ This is a gas appliance in an occupied house.
 - Transport: Streamable HTTP only, MCP spec revision 2026-07-28; localhost by default, LAN only with TLS + auth, no internet (ADR 0003).
 - Auth: OAuth 2.1; gateway is a resource server only, separate authorization server; per-tool scopes `boiler:read` / `boiler:write`, no hierarchy; no token passthrough; fail closed (ADR 0004).
 - Identity provider: Keycloak 26.8.x (pinned) in a Proxmox LXC with PostgreSQL; resource-indicators feature on; clients pre-registered (public, PKCE S256); DCR blocked; 5-minute access tokens; test that `aud` equals the gateway's address after every upgrade (ADR 0005).
+- Hosting/TLS: gateway and Keycloak in separate Proxmox LXCs behind Zoraxy (TLS termination, LAN only); wildcard `*.lab.<domain>` via Let's Encrypt DNS-01 on a subdomain delegated to deSEC with a TXT-only scoped token; AdGuard Home rewrites; Proxmox firewall allows only Zoraxy to the service ports; never log `Authorization` headers (ADR 0006).
 
 ## Decisions still open
 
@@ -69,7 +70,6 @@ Make these deliberately, with a short ADR in `docs/adr/` each. Each ADR names th
 
 - Approval mechanism for risky writes.
 - Where audit logs go (file, SQLite, OpenTelemetry collector).
-- Hosting: where the gateway runs, and TLS on the LAN.
 
 ## Environment notes
 
