@@ -19,3 +19,7 @@ A home boiler stands in for an enterprise system of record. It is a real device 
 The reasoning matters as much as the code. Each design choice is recorded as an [architecture decision record](docs/adr/). A threat model covering prompt injection, over-broad tools and stolen client tokens is planned, and the controls will be mapped to the NIST AI Risk Management Framework and ISO/IEC 42001, so the path from framework to working control is explicit.
 
 Status: planning.
+
+## Author
+
+Built by Marty Tremblay, enterprise architect at [Aspiro](https://www.aspiroconsulting.ca/).
