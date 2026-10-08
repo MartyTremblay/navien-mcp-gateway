@@ -22,7 +22,7 @@ AI clients can read the boiler's state and change a small set of settings, but o
 **Out of scope**
 - Replacing Home Assistant's own ESPHome integration.
 - More than one device or household.
-- Changes to the device firmware.
+- Changes to the device firmware, except to remove a path that bypasses the gateway ([ADR 0001](../adr/0001-remove-device-web-server.md)).
 
 ## Stakeholders and concerns
 
@@ -55,11 +55,11 @@ AI clients can read the boiler's state and change a small set of settings, but o
 - MCP clients support the transport and auth method chosen in the ADRs.
 - Home Assistant and the gateway can both connect to the device at the same time. Verified against the ESPHome documentation: the native API's `max_connections` defaults to 5 on ESP32, and the device's firmware configuration does not override it. Each connection uses RAM, so the gateway should hold one long-lived connection rather than one per request.
 
-## Known gap: an ungoverned path to the device
+## Resolved: a path around the gateway
 
-The device's firmware also enables ESPHome's built-in web server on port 80 without authentication. A request with no credentials returned HTTP 200 (checked 2026-10-08). Anyone on the local network, including a compromised device or an agent with network access, can reach the device directly and bypass every control in the gateway.
+The gateway governs only the paths that go through it. While checking the assumption above, we found that the device's firmware also ran ESPHome's built-in web server without authentication. Any client on the local network could have reached the device directly and bypassed every control described here.
 
-This is the same problem as a system of record that still accepts direct database connections after an API gateway is put in front of it: the gateway governs only the paths that go through it. Closing the gap means adding web server authentication or disabling the web server in the firmware, which conflicts with the "no firmware changes" scope above. The trade-off will be decided in an ADR and tracked in the threat model.
+This is the same problem as a system of record that still accepts direct database connections after an API gateway is put in front of it. It was closed on 2026-10-08 by removing the web server from the firmware ([ADR 0001](../adr/0001-remove-device-web-server.md)), a deliberate exception to the "no firmware changes" scope. Port 80 now refuses connections. The threat model will treat any direct path to the device as part of the attack surface, with a test that keeps port 80 closed.
 
 ## Success criteria
 
@@ -77,4 +77,4 @@ All ten [architecture principles](00-principles.md) apply. The ones that most sh
 ## Next
 
 - Baseline and target architecture (phases B to D).
-- ADR 0001: language and SDK.
+- ADR 0002: language and SDK.
