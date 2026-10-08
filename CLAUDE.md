@@ -61,12 +61,12 @@ This is a gas appliance in an occupied house.
 - Language/SDK: Python, official `mcp` SDK + `aioesphomeapi` (ADR 0002).
 - Transport: Streamable HTTP only, MCP spec revision 2026-07-28; localhost by default, LAN only with TLS + auth, no internet (ADR 0003).
 - Auth: OAuth 2.1; gateway is a resource server only, separate authorization server; per-tool scopes `boiler:read` / `boiler:write`, no hierarchy; no token passthrough; fail closed (ADR 0004).
+- Identity provider: Keycloak 26.8.x (pinned) in a Proxmox LXC with PostgreSQL; resource-indicators feature on; clients pre-registered (public, PKCE S256); DCR blocked; 5-minute access tokens; test that `aud` equals the gateway's address after every upgrade (ADR 0005).
 
 ## Decisions still open
 
 Make these deliberately, with a short ADR in `docs/adr/` each. Each ADR names the principles in `docs/architecture/00-principles.md` it applies or trades off. The project follows a lightweight TOGAF ADM; see `docs/architecture/README.md`.
 
-- Identity provider for OAuth (ADR 0005): must support PKCE, RFC 8707 resource indicators, RFC 8414 or OIDC discovery, Client ID Metadata Documents or pre-registration, RFC 9207.
 - Approval mechanism for risky writes.
 - Where audit logs go (file, SQLite, OpenTelemetry collector).
 - Hosting: where the gateway runs, and TLS on the LAN.

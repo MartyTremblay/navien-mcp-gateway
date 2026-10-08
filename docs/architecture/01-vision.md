@@ -77,5 +77,4 @@ All ten [architecture principles](00-principles.md) apply. The ones that most sh
 ## Next
 
 - Baseline and target architecture (phases B to D).
-- ADR 0005: identity provider.
 - Hosting: where the gateway runs, and TLS on the local network.

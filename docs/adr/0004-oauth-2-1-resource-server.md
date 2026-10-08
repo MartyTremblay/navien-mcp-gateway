@@ -22,7 +22,7 @@ The MCP specification ([revision 2026-07-28, Authorization](https://modelcontext
 
 ## Decision
 
-Use OAuth 2.1 with a separate authorization server (option 3). The gateway is a resource server only. There is no interim static-token phase. The choice of identity provider is a separate decision ([ADR 0005](README.md), pending).
+Use OAuth 2.1 with a separate authorization server (option 3). The gateway is a resource server only. There is no interim static-token phase. The choice of identity provider is a separate decision ([ADR 0005](0005-keycloak-identity-provider.md)).
 
 What the gateway does, following the specification:
 
