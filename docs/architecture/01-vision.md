@@ -53,7 +53,13 @@ AI clients can read the boiler's state and change a small set of settings, but o
 
 - The ESPHome native API is reachable from the gateway host and its encryption key is available to the gateway only.
 - MCP clients support the transport and auth method chosen in the ADRs.
-- Home Assistant and the gateway can both connect to the device at the same time. This needs to be verified early.
+- Home Assistant and the gateway can both connect to the device at the same time. Verified against the ESPHome documentation: the native API's `max_connections` defaults to 5 on ESP32, and the device's firmware configuration does not override it. Each connection uses RAM, so the gateway should hold one long-lived connection rather than one per request.
+
+## Known gap: an ungoverned path to the device
+
+The device's firmware also enables ESPHome's built-in web server on port 80 without authentication. A request with no credentials returned HTTP 200 (checked 2026-10-08). Anyone on the local network, including a compromised device or an agent with network access, can reach the device directly and bypass every control in the gateway.
+
+This is the same problem as a system of record that still accepts direct database connections after an API gateway is put in front of it: the gateway governs only the paths that go through it. Closing the gap means adding web server authentication or disabling the web server in the firmware, which conflicts with the "no firmware changes" scope above. The trade-off will be decided in an ADR and tracked in the threat model.
 
 ## Success criteria
 
