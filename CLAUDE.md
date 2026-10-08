@@ -63,13 +63,13 @@ This is a gas appliance in an occupied house.
 - Auth: OAuth 2.1; gateway is a resource server only, separate authorization server; per-tool scopes `boiler:read` / `boiler:write`, no hierarchy; no token passthrough; fail closed (ADR 0004).
 - Identity provider: Keycloak 26.8.x (pinned) in a Proxmox LXC with PostgreSQL; resource-indicators feature on; clients pre-registered (public, PKCE S256); DCR blocked; 5-minute access tokens; test that `aud` equals the gateway's address after every upgrade (ADR 0005).
 - Hosting/TLS: gateway, Keycloak and a dedicated lab Zoraxy (TLS termination, LAN only) in separate Proxmox LXCs; household Zoraxy not used by the lab; wildcard `*.lab.<domain>` via Let's Encrypt DNS-01 on a subdomain delegated to deSEC with a TXT-only scoped token; AdGuard Home rewrites (two synced servers); lab containers on a dedicated lab VLAN via a separate bridge on one node, with UniFi rules between lab and household networks (no Proxmox firewall, so household services are never affected); never log `Authorization` headers (ADR 0006).
+- Audit: SQLite in the gateway container, append-only, SHA-256 hash chain, decision committed before any device write (audit failure denies), outcome as a second record; no tokens stored; operational logs separate (ADR 0007).
 
 ## Decisions still open
 
 Make these deliberately, with a short ADR in `docs/adr/` each. Each ADR names the principles in `docs/architecture/00-principles.md` it applies or trades off. The project follows a lightweight TOGAF ADM; see `docs/architecture/README.md`.
 
 - Approval mechanism for risky writes.
-- Where audit logs go (file, SQLite, OpenTelemetry collector).
 
 ## Environment notes
 

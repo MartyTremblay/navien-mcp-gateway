@@ -10,3 +10,4 @@ One file per decision: `NNNN-short-title.md` with Context, Decision, Consequence
 | [0004](0004-oauth-2-1-resource-server.md) | OAuth 2.1, with the gateway as a resource server only | Accepted |
 | [0005](0005-keycloak-identity-provider.md) | Keycloak as the identity provider | Accepted |
 | [0006](0006-hosting-and-tls.md) | Hosting and TLS on the local network | Accepted |
+| [0007](0007-audit-store.md) | A tamper-evident SQLite audit store in the gateway | Accepted |

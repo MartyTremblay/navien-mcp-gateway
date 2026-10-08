@@ -143,7 +143,7 @@ erDiagram
 | Device encryption key | Secret | Gateway container only (environment or secret store) | Never logged or returned (P6) |
 | Access tokens | Secret, short-lived (5 min) | In transit only | Never logged; never passed on (ADR 0004) |
 | Keycloak signing keys, admin credentials | Secret | Keycloak container | Not reachable from the gateway |
-| Audit records | Internal | Audit store (ADR 0007, pending) | Hold `sub` and `client_id`, never tokens. Audit failure blocks writes (P5) |
+| Audit records | Internal | SQLite in the gateway container (ADR 0007) | Hold `sub` and `client_id`, never tokens. Audit failure blocks writes (P5) |
 | Boiler telemetry | Internal | Read live from the device | Not persisted by the gateway beyond audit context |
 
 ## Phase C: Application architecture
@@ -290,12 +290,11 @@ The ESPHome native API allows several clients at once (`max_connections` default
 | No governed API for the device | Gateway, read-only first (P8) | Not started |
 | No bounds stricter than the device | Gateway policy | Not started |
 | No human approval for high-risk actions | Approval ADR | Decision open |
-| No audit of AI actions | Audit writer; ADR 0007 | Decision open |
+| No audit of AI actions | Audit writer; ADR 0007 | Decided; not built |
 | No threat model | Threat model document and tests | Not started |
 
 ## Open items
 
-- ADR 0007: audit storage.
 - ADR on the approval mechanism.
 - The gateway's port and canonical MCP address (`https://boiler.lab.<domain>/mcp`) are set during implementation.
 - Roadmap of increments (phases E and F), starting with read-only tools.
