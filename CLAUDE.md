@@ -58,7 +58,7 @@ This is a gas appliance in an occupied house.
 
 ## Decisions still open
 
-Make these deliberately, with a short ADR in `docs/adr/` each:
+Make these deliberately, with a short ADR in `docs/adr/` each. Each ADR names the principles in `docs/architecture/00-principles.md` it applies or trades off. The project follows a lightweight TOGAF ADM; see `docs/architecture/README.md`.
 
 - Language/SDK: Python (`mcp` SDK + `aioesphomeapi`) vs TypeScript (`@modelcontextprotocol/sdk` + an ESPHome client). Python has the mature ESPHome client.
 - Transport: stdio (local only) vs Streamable HTTP (needed for real auth and remote clients).
