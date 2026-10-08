@@ -56,11 +56,14 @@ This is a gas appliance in an occupied house.
 - Nothing secret in the repo or in chat: API keys, HA tokens, client tokens go in `.env` (gitignored) or a secret store. `.env.example` lists the names only.
 - Ask Marty to place secrets himself; never print them in logs or tool output.
 
+## Decisions made
+
+- Language/SDK: Python, official `mcp` SDK + `aioesphomeapi` (ADR 0002).
+
 ## Decisions still open
 
 Make these deliberately, with a short ADR in `docs/adr/` each. Each ADR names the principles in `docs/architecture/00-principles.md` it applies or trades off. The project follows a lightweight TOGAF ADM; see `docs/architecture/README.md`.
 
-- Language/SDK: Python (`mcp` SDK + `aioesphomeapi`) vs TypeScript (`@modelcontextprotocol/sdk` + an ESPHome client). Python has the mature ESPHome client.
 - Transport: stdio (local only) vs Streamable HTTP (needed for real auth and remote clients).
 - Auth: MCP's OAuth 2.1 authorization flow vs static bearer tokens to start.
 - Approval mechanism for risky writes.
