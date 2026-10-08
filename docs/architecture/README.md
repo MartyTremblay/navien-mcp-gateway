@@ -6,7 +6,7 @@ This project follows a lightweight version of the TOGAF Architecture Development
 |---|---|---|
 | Preliminary | [Architecture principles](00-principles.md) | Draft |
 | A. Architecture Vision | [Architecture vision](01-vision.md) | Draft |
-| B, C, D. Business, Data/Application, Technology | Baseline and target architecture | Planned |
+| B, C, D. Business, Data/Application, Technology | [Baseline and target architecture](02-baseline-target.md) | Draft |
 | E, F. Opportunities and Migration | Roadmap of increments | Planned |
 | G. Implementation Governance | Compliance check at the end of each increment | Planned |
 | H. Change Management | New ADRs that supersede old ones | Ongoing |

@@ -76,4 +76,6 @@ All ten [architecture principles](00-principles.md) apply. The ones that most sh
 
 ## Next
 
-- Baseline and target architecture (phases B to D).
+- [Baseline and target architecture](02-baseline-target.md) (phases B to D).
+- ADR 0007: audit storage. ADR on the approval mechanism.
+- Roadmap of increments (phases E and F).
