@@ -59,15 +59,16 @@ This is a gas appliance in an occupied house.
 ## Decisions made
 
 - Language/SDK: Python, official `mcp` SDK + `aioesphomeapi` (ADR 0002).
+- Transport: Streamable HTTP only, MCP spec revision 2026-07-28; localhost by default, LAN only with TLS + auth, no internet (ADR 0003).
 
 ## Decisions still open
 
 Make these deliberately, with a short ADR in `docs/adr/` each. Each ADR names the principles in `docs/architecture/00-principles.md` it applies or trades off. The project follows a lightweight TOGAF ADM; see `docs/architecture/README.md`.
 
-- Transport: stdio (local only) vs Streamable HTTP (needed for real auth and remote clients).
 - Auth: MCP's OAuth 2.1 authorization flow vs static bearer tokens to start.
 - Approval mechanism for risky writes.
 - Where audit logs go (file, SQLite, OpenTelemetry collector).
+- Hosting: where the gateway runs, and TLS on the LAN.
 
 ## Environment notes
 
