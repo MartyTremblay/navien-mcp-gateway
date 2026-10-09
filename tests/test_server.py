@@ -206,3 +206,58 @@ def test_tools_list_shows_only_the_read_tool(env):
     tools = r.json()["result"]["tools"]
     assert [t["name"] for t in tools] == ["get_boiler_status"]
     assert tools[0]["annotations"]["readOnlyHint"] is True
+
+
+def test_older_client_without_routing_headers_is_served_and_audited(env):
+    client, audit, _ = env
+    h = {
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/event-stream",
+        "Authorization": f"Bearer {token()}",
+        "MCP-Protocol-Version": "2025-11-25",
+    }
+    init = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {
+            "protocolVersion": "2025-11-25",
+            "capabilities": {},
+            "clientInfo": {"name": "old", "version": "1"},
+        },
+    }
+    r = client.post("/mcp", headers=h, content=json.dumps(init))
+    assert r.status_code == 200
+    assert "mcp-session-id" not in r.headers  # stateless: no sessions
+    call = {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "tools/call",
+        "params": {"name": "get_boiler_status", "arguments": {}},
+    }
+    r = client.post("/mcp", headers=h, content=json.dumps(call))
+    assert r.status_code == 200 and "Standby" in r.text
+    rows = audit_rows(audit)
+    assert ("decision", "allow", None, "get_boiler_status", "person-1", "claude-code", None) in rows
+    assert rows[-1][0] == "outcome" and rows[-1][6] == "ok"
+
+
+def test_older_client_without_scope_is_refused_and_audited_as_deny(env):
+    client, audit, _ = env
+    h = {
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/event-stream",
+        "Authorization": f"Bearer {token(scope='boiler:write')}",
+        "MCP-Protocol-Version": "2025-11-25",
+    }
+    call = {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "tools/call",
+        "params": {"name": "get_boiler_status", "arguments": {}},
+    }
+    r = client.post("/mcp", headers=h, content=json.dumps(call))
+    assert r.status_code == 403
+    assert "Standby" not in r.text
+    decisions = [row[1] for row in audit_rows(audit)]
+    assert decisions == ["deny"]  # never recorded as allowed

@@ -10,6 +10,12 @@ Request path, outermost first:
    `Mcp-Method` and `Mcp-Name` headers, which the SDK later checks against the
    body (`HeaderMismatch`), so a lying header can only cause a denial.
 4. The SDK's `RequireAuthMiddleware` (401 challenge with resource metadata).
+
+Clients on earlier spec revisions (before 2026-07-28) don't send the routing
+headers. The SDK still serves them, statelessly (no session IDs). For them the
+middleware records only a request-level entry, and the tool records the
+tool-level decision and enforces scopes itself; the 403 challenge is then a
+tool error instead.
 5. The tool itself, which checks scopes again (defense in depth, and for
    clients that don't send the routing headers) and records the outcome.
 
@@ -93,6 +99,14 @@ class GatewayPolicyMiddleware:
                 return
 
             who = identity_from(user.access_token)
+            if not set(policy.SCOPES_SUPPORTED) <= set(who.scopes):
+                # Answered here rather than by the SDK so the challenge names the
+                # scope needed, as the MCP authorization spec asks.
+                await _audit_decision(
+                    self.audit, request_id, who, tool, None, "deny", "insufficient_scope"
+                )
+                await self._insufficient_scope(list(policy.SCOPES_SUPPORTED), send)
+                return
             if method == "tools/call":
                 missing = policy.missing_scopes(tool or "", who.scopes)
                 if missing is None:
@@ -125,6 +139,11 @@ class GatewayPolicyMiddleware:
             )
             return
 
+        # Only hand the request ID to the tool when the routing headers named it;
+        # otherwise (older clients) the tool records its own decision with the tool name.
+        if method != "tools/call":
+            await self.app(scope, receive, send)
+            return
         token = _REQUEST_ID.set(request_id)
         try:
             await self.app(scope, receive, send)

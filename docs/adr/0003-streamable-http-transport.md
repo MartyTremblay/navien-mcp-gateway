@@ -43,3 +43,11 @@ Required by the specification and enforced from the first release:
 - **Client compatibility is a risk.** The 2026-07-28 revision is recent and changes Streamable HTTP's behaviour. Some MCP clients may still speak the earlier session-based revisions (2025-03-26 to 2025-11-25). The Python SDK appears to include both modern and earlier handlers. During implementation, confirm which revisions the SDK serves and which revision each intended client uses. Supporting an earlier revision would bring back sessions, and with them session-ID handling that the threat model must cover.
 - **More to run.** The gateway is now a service with a port, TLS and a process to keep running, rather than a subprocess a client launches. Where it runs is a separate decision.
 - **Local development** uses the same HTTP path as production, with test credentials. There is no shortcut that skips authentication.
+
+## Update (2026-10-09): earlier-revision clients
+
+Testing showed the Python SDK also serves clients on earlier revisions (for example 2025-11-25), and in the gateway's stateless mode it issues **no session IDs**, so the session concern above does not arise. The first real client, Claude Code 2.1.281, may use an earlier revision, so these clients are accepted with two differences, both covered by tests:
+
+- They don't send the `Mcp-Method` and `Mcp-Name` headers, so the per-tool scope check happens in the tool, and a missing per-tool scope is reported as a tool error rather than a 403 challenge. Missing the server-wide `boiler:read` scope still gets the 403 `insufficient_scope` challenge.
+- The audit records the tool-level decision from inside the tool, with the tool name, rather than from the routing headers.
+
