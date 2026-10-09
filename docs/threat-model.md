@@ -1,0 +1,97 @@
+# Threat model
+
+Version 1, for increment 1 (read-only gateway). Status: draft. Updated at the end of each increment as part of its compliance check ([roadmap, phase G](architecture/03-roadmap.md#implementation-governance-phase-g)).
+
+Each threat lists its controls and the evidence that the controls work: an automated test, or a recorded check against the lab. Categories use STRIDE and, where the threat involves the AI agent, the OWASP Top 10 for LLM Applications (2025).
+
+## Scope
+
+In scope: the path from an MCP client to the boiler's controller through the gateway, the authorization server, the lab network and reverse proxy, and the audit store. Increment 1 exposes one read-only tool.
+
+Out of scope for this version: threats that need write tools (increment 2 onwards) or approvals (increment 4). They are listed at the end so they aren't forgotten.
+
+## What we protect
+
+| Asset | Why it matters |
+|---|---|
+| The boiler and household safety | A gas appliance in an occupied house |
+| Device encryption key | Anyone holding it can control the device directly, bypassing the gateway |
+| Access tokens | Grant an agent the owner's permissions, for 5 minutes |
+| Audit trail | The evidence of who did what; worthless if it can be altered or skipped |
+| Household network | Lab work must not open a path into it |
+| The owner's personal data | Name and email should not travel in tokens or tool output |
+
+## Trust boundaries
+
+```mermaid
+flowchart LR
+    subgraph untrusted["Untrusted"]
+        agent["AI agent<br/>(may be prompt-injected)"]
+    end
+    subgraph household["Household network"]
+        browser["Owner's browser"]
+    end
+    subgraph lab["Lab VLAN"]
+        proxy["Lab reverse proxy<br/>(TLS)"]
+        gw["Gateway"]
+        kc["Keycloak"]
+        db[("Audit store")]
+    end
+    device["Boiler controller"]
+
+    agent -- "1. bearer token" --> proxy --> gw
+    browser -- "2. sign-in, consent" --> proxy --> kc
+    gw -- "3. signing keys" --> kc
+    gw -- "4. Noise-encrypted API" --> device
+    gw --> db
+```
+
+Boundaries: (1) agent to gateway, where every request is authenticated, authorized and audited; (2) the owner's consent at the authorization server; (3) the gateway trusts Keycloak only for signing keys; (4) only the gateway, holding the device key, crosses into the device.
+
+## Threats, controls and evidence
+
+| ID | Threat | Category | Controls | Evidence | Status |
+|---|---|---|---|---|---|
+| T1 | A stolen access token is replayed | Spoofing | 5-minute token lifetime; tokens bound to this gateway only; read-only scope in this increment | `test_auth`: expired token refused; ADR 0005 verification: 300-second lifetime | Mitigated; replay within 5 minutes accepted |
+| T2 | A token issued for another service is presented to the gateway (confused deputy) | Spoofing, Elevation | `aud` must equal the gateway's URL exactly and exclusively; SDK resource check as a second layer | `test_auth`: `wrong_audience`, `audience_not_exclusive`; `test_server`: wrong audience gets 401 | Mitigated |
+| T3 | A forged token: unsigned, algorithm confusion, or signed by another key | Spoofing | Asymmetric algorithms only (symmetric can't be configured); key from the realm's published set; issuer check | `test_auth`: `alg=none`, HS256 confusion, wrong key, unknown key ID, wrong issuer | Mitigated |
+| T4 | The authorization server issues tokens for unknown resources | Elevation | Keycloak resource indicators: unknown resources refused | ADR 0005 verification: `invalid_target` | Mitigated |
+| T5 | A rogue client registers itself with the authorization server | Spoofing | Dynamic registration blocked by policy; clients pre-registered, public, PKCE S256 required, exact redirect URIs, consent required | ADR 0005 verification (by inspection) | Mitigated; not tested with a live request |
+| T6 | The gateway passes a client's token on to another system | Elevation | No code path forwards tokens; the device uses its own key | Code review: `device.py` has no token input | Mitigated by design |
+| T7 | A web page attacks the gateway through the browser (DNS rebinding) | Spoofing | `Host` and `Origin` allow-lists | `test_server`: bad origin, bad host | Mitigated |
+| T8 | An intermediary and the gateway disagree about which tool is called (header-body mismatch) | Tampering | SDK rejects mismatched `Mcp-Method`/`Mcp-Name`; the policy check reads headers but can only deny | `test_server`: lying header gets 400 and no call | Mitigated |
+| T9 | Excessive agency: the agent can do more than intended | Elevation; LLM06 | One read-only tool; unknown tools denied; per-tool scopes; the device adapter has no method that sends commands | `test_server`: tools list, unknown tool denied; `test_device`: no commands sent | Mitigated |
+| T10 | Prompt injection steers the agent to change the boiler or extract data | Elevation; LLM01 | Nothing the agent can call changes the device (T9); output is typed values, not free text from external sources | As T9 | Mitigated for actions; misleading the agent's reasoning is out of the gateway's control |
+| T11 | Sensitive information disclosed through tool output | Information disclosure; LLM02 | Curated status fields only; diagnostics (network addresses, firmware details, raw unknown values) never exposed; tokens carry no name or email | `test_server`: diagnostic value absent from output; ADR 0005 verification: minimal claims | Mitigated |
+| T12 | Stale data presented as current | Repudiation; LLM09 | `device_connected` and `stale` flags; "last changed" per value; outcome recorded as `unconfirmed` when disconnected | `test_server`: disconnected device reported stale | Mitigated |
+| T13 | Secrets leak: device key or tokens in logs, audit, errors or the repository | Information disclosure | Device key as a secret type; tokens never logged or recorded (only `jti`); credential-like tool arguments refused; `.env` gitignored | `test_config`: key absent from repr; `test_auth`: token absent from audit file; `test_audit`: credential-like arguments refused | Mitigated; see lessons below |
+| T14 | The audit trail is edited or records removed | Tampering, Repudiation | Insert-only with triggers; SHA-256 hash chain; verification against an exported anchor | `test_audit`: edit, middle deletion, truncation with anchor | Partly: truncation is only caught with an off-box anchor (increment 5) |
+| T15 | An action happens without being audited | Repudiation | Decision committed before acting; audit failure refuses the request (503) | `test_audit`: storage failure raises; `test_server`: every path audited | Mitigated |
+| T16 | Someone bypasses the gateway and controls the device directly | Elevation | Device web server removed (ADR 0001); native API needs the device key; lab separated from the household network | Lab check: web port refused; ADR 0001 | Partly: Home Assistant holds the key by design (accepted second path) |
+| T17 | A device on the network exhausts the controller's connection slots | Denial of service | The gateway uses one long-lived connection | Live check: one connection, reconnect logic | Open: a router rule limiting the API port to Home Assistant and the gateway is planned |
+| T18 | The authorization server is unreachable or its keys can't be fetched | Denial of service | Fail closed: no valid keys, no access; keys cached for 5 minutes | `test_auth`: key server down, discovery issuer mismatch | Mitigated (availability traded for safety) |
+| T19 | A compromised lab container reaches household services | Elevation | Lab VLAN with router allow-list; dedicated lab reverse proxy (no shared proxy to pivot through) | Lab checks: lab to Home Assistant and to household proxy blocked; household to Keycloak direct blocked | Mitigated |
+| T20 | The reverse proxy exposes bearer tokens | Information disclosure | Lab-only proxy; request headers not logged; 5-minute tokens | Configuration (ADR 0006) | Accepted |
+| T21 | Supply chain: a malicious or vulnerable dependency or install script | Tampering; LLM03 | Direct dependencies pinned, full lock file; install scripts read before running; Keycloak and proxy versions recorded | Reading the Keycloak script found a default admin password, fixed before use | Partly: no hash-pinned installs yet |
+| T22 | The authorization server's experimental features change on upgrade | Elevation | Pinned Keycloak version; the audience test runs after every upgrade | `tools/oauth_pkce_check.py` | Mitigated by process |
+
+## Lessons from building it
+
+Real incidents during the build, kept because they show where controls failed or held:
+
+- **Secrets in chat.** A Keycloak client secret was pasted in an export, and a DNS API token was pasted while debugging. Both were rotated immediately. Exports and debug output are a common leak path; the runbooks now say to redact before sharing.
+- **A component wasn't where the plan said.** A container "moved" to the lab network was still on the household network. Block tests that expected `blocked` returned `OPEN`, which caught it. Tests that expect failure matter as much as tests that expect success.
+- **Firewall rules saved as Block.** All allow rules were initially saved with the wrong action. Only the test that expected traffic to pass caught it; every "should be blocked" test passed.
+- **A crash loop looked healthy.** After moving secrets out of a service file, Keycloak restarted 30 times while `is-active` reported `active`. The restart count showed it.
+- **Install script defaults.** A community install script set a well-known bootstrap admin password. Reading scripts before running them is a cheap control that paid off.
+
+## Deferred to later increments
+
+| Threat | Increment |
+|---|---|
+| Out-of-range or rapid repeated writes; writes during a device fault | 2, 3 |
+| Prompt-injected agent pushing values to their limits | 2, 3 |
+| Writes reported as successful without read-back | 2 |
+| An agent approving its own high-risk request; approval replay or expiry | 4 |
+| Audit truncation without an off-box anchor | 5 |
+| Mapping each threat and control to the NIST AI RMF | 5 |
