@@ -2,7 +2,7 @@
 
 ADM phase G. Date: 2026-10-09. Deployed commit: `77f7b31`. Tests: 57 passing.
 
-The six checks are defined in the [roadmap](../architecture/03-roadmap.md#implementation-governance-phase-g). Result: **passed, with one item pending** (Home Assistant unaffected, P9) and open items carried forward.
+The six checks are defined in the [roadmap](../architecture/03-roadmap.md#implementation-governance-phase-g). Result: **passed**, with open items carried forward. (Home Assistant's continued operation, P9, was confirmed by the owner on 2026-10-09.)
 
 ## 1. Principles
 
@@ -16,7 +16,7 @@ The six checks are defined in the [roadmap](../architecture/03-roadmap.md#implem
 | P6 Secrets stay server-side | Device key only in the gateway's root-only environment file; tokens never logged or audited (only `jti`); clients never see the device key | Pass, with two incidents (see check 6) |
 | P7 Fail safe | No signing keys, no access; audit failure refuses the request (503); unknown tools denied; device commands don't exist in this increment | Pass |
 | P8 Expose capability incrementally | Read-only first, one tool | Pass |
-| P9 Do not disrupt existing systems | The gateway is a second connection to the device; Home Assistant keeps its own | **Pending**: Home Assistant not yet confirmed working after the controller's address change |
+| P9 Do not disrupt existing systems | The gateway is a second connection to the device; Home Assistant keeps its own | Pass: Home Assistant confirmed still connected to the controller after the address change (owner check, 2026-10-09) |
 | P10 Enterprise pattern by default | Separate identity provider, resource-server-only gateway, audience-bound tokens, segmented lab network, per-environment reverse proxy, tamper-evident audit; simplifications recorded in ADRs | Pass |
 
 ## 2. Decisions recorded
@@ -36,7 +36,7 @@ Smaller operational fixes (no `.env` file read in production; bounded graceful s
 | A real MCP client connects through the full sign-in and reads the status | Claude Code signed in (consent, OTP), called `get_boiler_status`, and reported live values; audit records `allow` and `outcome ok` for `claude-code` | Pass |
 | Tokens without `boiler:read`, expired, or for another audience are refused, and each refusal is audited | Unit and HTTP tests (`test_auth`, `test_server`); live: Claude Code's first token was refused as `invalid_token:wrong_audience` and audited | Pass |
 | The audit verification command reports an intact chain | `verify` on the deployed store: 52 records, chain intact | Pass |
-| Home Assistant still works unchanged | Not yet checked | **Pending** |
+| Home Assistant still works unchanged | Owner confirmed Home Assistant still connects to the controller | Pass |
 
 ## 4. Threat model
 
@@ -63,7 +63,6 @@ Increment 1 is read-only and changed no boiler setting. Infrastructure changes m
 
 ## Carried forward
 
-- Confirm Home Assistant is unaffected (closes P9 and this check).
 - T17: router rule for the device's API port.
 - Narrow the gateway's allowed `Host` values to the one the reverse proxy actually forwards.
 - Test whether the lab reverse proxy buffers streamed responses (ADR 0006); the long-lived `subscriptions/listen` stream works, but buffering hasn't been measured.
