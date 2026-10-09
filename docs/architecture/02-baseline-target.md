@@ -297,4 +297,4 @@ The ESPHome native API allows several clients at once (`max_connections` default
 
 - ADR on the approval mechanism.
 - The gateway's port and canonical MCP address (`https://boiler.lab.<domain>/mcp`) are set during implementation.
-- Roadmap of increments (phases E and F), starting with read-only tools.
+- [Roadmap of increments](03-roadmap.md) (phases E and F), starting with read-only tools.

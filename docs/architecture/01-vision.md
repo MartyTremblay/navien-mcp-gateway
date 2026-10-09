@@ -78,4 +78,4 @@ All ten [architecture principles](00-principles.md) apply. The ones that most sh
 
 - [Baseline and target architecture](02-baseline-target.md) (phases B to D).
 - ADR on the approval mechanism.
-- Roadmap of increments (phases E and F).
+- [Roadmap of increments](03-roadmap.md) (phases E and F).

@@ -7,8 +7,8 @@ This project follows a lightweight version of the TOGAF Architecture Development
 | Preliminary | [Architecture principles](00-principles.md) | Draft |
 | A. Architecture Vision | [Architecture vision](01-vision.md) | Draft |
 | B, C, D. Business, Data/Application, Technology | [Baseline and target architecture](02-baseline-target.md) | Draft |
-| E, F. Opportunities and Migration | Roadmap of increments | Planned |
-| G. Implementation Governance | Compliance check at the end of each increment | Planned |
+| E, F. Opportunities and Migration | [Roadmap of increments](03-roadmap.md) | Draft |
+| G. Implementation Governance | Compliance check at the end of each increment ([defined in the roadmap](03-roadmap.md#implementation-governance-phase-g)) | Defined |
 | H. Change Management | New ADRs that supersede old ones | Ongoing |
 | Requirements Management | Requirements register tracing requirement → threat → control → NIST AI RMF function | Planned |
 
