@@ -94,6 +94,12 @@ async def test_states_for_unknown_entities_are_ignored(device):
     assert device.snapshot().readings == {}
 
 
+async def test_connected_since_is_reported_and_cleared(device):
+    assert device.snapshot().connected_since is not None
+    await device._on_disconnect(expected=False)
+    assert device.snapshot().connected_since is None
+
+
 async def test_disconnect_is_visible(device):
     await device._on_disconnect(expected=False)
     assert not device.snapshot().connected

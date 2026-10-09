@@ -46,7 +46,7 @@ Required by the specification and enforced from the first release:
 
 ## Update (2026-10-09): earlier-revision clients
 
-Testing showed the Python SDK also serves clients on earlier revisions (for example 2025-11-25), and in the gateway's stateless mode it issues **no session IDs**, so the session concern above does not arise. The first real client, Claude Code 2.1.281, may use an earlier revision, so these clients are accepted with two differences, both covered by tests:
+Testing showed the Python SDK also serves clients on earlier revisions (for example 2025-11-25), and in the gateway's stateless mode it issues **no session IDs**, so the session concern above does not arise. In the first real connection (2026-10-09), Claude Code 2.1.281 used revision 2026-07-28 (`server/discover`, `subscriptions/listen` and routing headers), so the main path is what's in use. Earlier-revision clients are still accepted, with two differences, both covered by tests:
 
 - They don't send the `Mcp-Method` and `Mcp-Name` headers, so the per-tool scope check happens in the tool, and a missing per-tool scope is reported as a tool error rather than a 403 challenge. Missing the server-wide `boiler:read` scope still gets the 403 `insufficient_scope` challenge.
 - The audit records the tool-level decision from inside the tool, with the tool name, rather than from the routing headers.

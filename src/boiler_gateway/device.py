@@ -7,7 +7,9 @@ the time it arrived, so readers can tell fresh values from stale ones (P2).
 ESPHome sends a state when it changes, and a full set on (re)connect. A
 value's age therefore grows while it stays the same: an old value is still
 current as long as the connection is up. Readers treat "not connected" as
-stale, not "old" (`updated_at` is when the value last changed).
+stale, not "old". `updated_at` is when the value was last *reported*: after a
+reconnect every value is re-sent, so a recent `updated_at` close to
+`connected_since` doesn't mean the value changed.
 
 The `Device` protocol is the seam for a later split into a separate service
 (ADR 0002, option 3). This increment is read-only: the adapter has no method
@@ -35,7 +37,7 @@ class Reading:
     name: str
     value: Any
     unit: str
-    updated_at: float  # time.time() when the device last reported a change
+    updated_at: float  # time.time() when the device last reported this value
 
 
 @dataclass(frozen=True)
@@ -43,6 +45,7 @@ class DeviceSnapshot:
     connected: bool
     readings: dict[str, Reading]
     taken_at: float
+    connected_since: float | None = None  # when the current connection was made
 
     def age(self, object_id: str) -> float | None:
         r = self.readings.get(object_id)
@@ -80,6 +83,7 @@ class EsphomeDevice:
         self._entities: dict[int, Any] = {}
         self._readings: dict[str, Reading] = {}
         self._connected = False
+        self._connected_since: float | None = None
 
     async def start(self) -> None:
         self._client = APIClient(
@@ -104,7 +108,12 @@ class EsphomeDevice:
         self._connected = False
 
     def snapshot(self) -> DeviceSnapshot:
-        return DeviceSnapshot(self._connected, dict(self._readings), time.time())
+        return DeviceSnapshot(
+            self._connected,
+            dict(self._readings),
+            time.time(),
+            self._connected_since if self._connected else None,
+        )
 
     # Callbacks (also driven directly by tests)
 
@@ -114,6 +123,7 @@ class EsphomeDevice:
         self._entities = {e.key: e for e in entities}
         self._client.subscribe_states(self._on_state)
         self._connected = True
+        self._connected_since = time.time()
         log.info("connected to device; %d entities", len(self._entities))
 
     async def _on_disconnect(self, expected: bool) -> None:

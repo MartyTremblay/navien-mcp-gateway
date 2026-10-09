@@ -33,7 +33,12 @@ class FakeDevice:
         self.stopped = True
 
     def snapshot(self):
-        return DeviceSnapshot(self.connected, dict(self.readings), time.time())
+        return DeviceSnapshot(
+            self.connected,
+            dict(self.readings),
+            time.time(),
+            time.time() if self.connected else None,
+        )
 
 
 @pytest.fixture
@@ -131,6 +136,9 @@ def test_valid_call_returns_curated_status_and_is_audited(env):
     assert status["device_connected"] is True
     assert status["values"]["tank_temperature_c"]["value"] == 51.0
     assert status["values"]["error_code"]["value"] == 0  # integer, not 0.0
+    assert "last_reported" in status["values"]["error_code"]  # not "last_changed": see T12
+    assert "last_changed" not in r.text
+    assert status["device_connected_since"] is not None
     assert "192.0.2.43" not in r.text  # diagnostic values are not exposed
     rows = audit_rows(audit)
     assert rows[-2] == (

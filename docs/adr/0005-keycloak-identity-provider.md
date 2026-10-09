@@ -69,3 +69,12 @@ Tested against Keycloak 26.8 with the `resource-indicators` feature enabled, usi
 - **Data minimization.** Keycloak's default `profile` and `email` scopes were removed from the client, so tokens don't carry the person's name or email address, which the gateway doesn't need.
 
 Two setup mistakes surfaced and were fixed: the boiler scopes weren't assigned to the client at first (`invalid_scope`), and the PKCE setting has moved in 26.8 to the client's Capability config.
+
+### First real client (2026-10-09)
+
+Claude Code 2.1.281 completed the sign-in, but its token had `aud: ["boiler-gateway", "account"]`: it did not send the RFC 8707 `resource` parameter, so Keycloak fell back to the client's audience mapper, and the realm's default `roles` scope added `account`. The gateway refused the token (`invalid_token:wrong_audience`, audited). That is the control working against a legitimate client.
+
+The fallback in this ADR was applied to that one client: its dedicated scope now carries an Audience mapper with the gateway's URL as a custom audience, and the `roles` scope was removed from it. The next token had `aud` equal to the gateway's URL only, and the call succeeded. The gateway's validation didn't change.
+
+The client also asks for `offline_access`, so it holds a refresh token. Refusing the scope would make Keycloak reject the whole sign-in, so the mitigation is in the realm: refresh token rotation and a maximum offline session lifetime.
+

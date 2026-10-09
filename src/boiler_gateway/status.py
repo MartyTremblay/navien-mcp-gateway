@@ -49,14 +49,19 @@ def build_status(snapshot: DeviceSnapshot) -> dict[str, Any]:
         value = reading.value
         if field in _INTEGER_FIELDS and isinstance(value, float):
             value = round(value)
-        values[field] = {"value": value, "last_changed": _iso(reading.updated_at)}
+        values[field] = {"value": value, "last_reported": _iso(reading.updated_at)}
     return {
         "device_connected": snapshot.connected,
         "stale": not snapshot.connected,
         "as_of": _iso(snapshot.taken_at),
+        "device_connected_since": (
+            _iso(snapshot.connected_since) if snapshot.connected_since else None
+        ),
         "values": values,
         "note": (
-            "Values are the device's last reports. The device reports changes, so an old "
-            "last_changed is normal while device_connected is true."
+            "last_reported is when the device last sent a value, not when it changed. The "
+            "device re-sends every value when the connection is (re)made, so values reported "
+            "around device_connected_since do not indicate a change. An old last_reported is "
+            "normal while device_connected is true."
         ),
     }
