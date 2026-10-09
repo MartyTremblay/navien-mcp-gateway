@@ -26,7 +26,7 @@ This is a learning project: the goal is to practise enterprise AI architecture p
 | Controller | Waveshare ESP32-S3-RS485-CAN on the boiler's NaviLink RS485 port |
 | Network | LAN only; host and address are in `.env` (`ESPHOME_HOST`) and `CLAUDE.local.md` |
 | ESPHome native API | port 6053, **Noise-encrypted**: the key goes in `.env`, never commit it |
-| ESPHome web server | port 80 is enabled on the device; check its auth before relying on it |
+| ESPHome web server | removed from the firmware (ADR 0001); the native API is the only network path |
 | Firmware source | `github.com/MartyTremblay/navien`, branch `personal-waveshare-deploy` (fork of `htumanyan/navien`) |
 
 Useful entities (ESPHome object names may differ from HA entity IDs; confirm via the API's entity list):

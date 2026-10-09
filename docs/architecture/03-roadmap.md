@@ -18,6 +18,8 @@ flowchart LR
 
 ## Increment 1: Read-only gateway
 
+Status: deployed 2026-10-09; [compliance check](../compliance/increment-1.md) passed with one item pending.
+
 **Goal:** an AI client can read the boiler's state through the gateway, and nothing else.
 
 **Scope**
