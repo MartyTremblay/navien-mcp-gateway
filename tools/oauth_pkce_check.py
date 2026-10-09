@@ -79,13 +79,23 @@ def wait_for_callback(port: int, path: str) -> dict:
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--issuer", required=True, help="realm issuer URL, e.g. https://auth.lab.example.org/realms/home")
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    ap.add_argument(
+        "--issuer",
+        required=True,
+        help="realm issuer URL, e.g. https://auth.lab.example.org/realms/home",
+    )
     ap.add_argument("--client-id", required=True)
     ap.add_argument("--resource", required=True, help="the gateway's canonical MCP URL (RFC 8707)")
     ap.add_argument("--scope", default="boiler:read", help="space-separated scopes to request")
     ap.add_argument("--port", type=int, default=8765, help="loopback port for the redirect URI")
-    ap.add_argument("--insecure", action="store_true", help="skip TLS verification (only until the lab certificate exists)")
+    ap.add_argument(
+        "--insecure",
+        action="store_true",
+        help="skip TLS verification (only until the lab certificate exists)",
+    )
     args = ap.parse_args()
 
     ctx = ssl.create_default_context()
@@ -103,35 +113,48 @@ def main() -> None:
     challenge = b64url(hashlib.sha256(verifier.encode()).digest())
     state = b64url(secrets.token_bytes(16))
 
-    auth_url = meta["authorization_endpoint"] + "?" + urllib.parse.urlencode({
-        "response_type": "code",
-        "client_id": args.client_id,
-        "redirect_uri": redirect_uri,
-        "scope": args.scope,
-        "state": state,
-        "code_challenge": challenge,
-        "code_challenge_method": "S256",
-        "resource": args.resource,
-    })
+    auth_url = (
+        meta["authorization_endpoint"]
+        + "?"
+        + urllib.parse.urlencode(
+            {
+                "response_type": "code",
+                "client_id": args.client_id,
+                "redirect_uri": redirect_uri,
+                "scope": args.scope,
+                "state": state,
+                "code_challenge": challenge,
+                "code_challenge_method": "S256",
+                "resource": args.resource,
+            }
+        )
+    )
     print("Opening the browser to sign in. If it doesn't open, visit:\n" + auth_url + "\n")
     webbrowser.open(auth_url)
     cb = wait_for_callback(args.port, "/callback")
 
     if cb.get("state") != state:
         sys.exit("State mismatch: possible CSRF or a stale browser tab.")
-    if meta.get("authorization_response_iss_parameter_supported") and cb.get("iss") != meta["issuer"]:
+    if (
+        meta.get("authorization_response_iss_parameter_supported")
+        and cb.get("iss") != meta["issuer"]
+    ):
         sys.exit(f"RFC 9207 check failed: iss={cb.get('iss')!r}, expected {meta['issuer']!r}")
     if "error" in cb:
         sys.exit(f"Authorization error: {cb.get('error')}: {cb.get('error_description', '')}")
 
-    tok = fetch_json(meta["token_endpoint"], ctx, {
-        "grant_type": "authorization_code",
-        "code": cb["code"],
-        "redirect_uri": redirect_uri,
-        "client_id": args.client_id,
-        "code_verifier": verifier,
-        "resource": args.resource,
-    })
+    tok = fetch_json(
+        meta["token_endpoint"],
+        ctx,
+        {
+            "grant_type": "authorization_code",
+            "code": cb["code"],
+            "redirect_uri": redirect_uri,
+            "client_id": args.client_id,
+            "code_verifier": verifier,
+            "resource": args.resource,
+        },
+    )
     access = tok.get("access_token", "")
     parts = access.split(".")
     if len(parts) != 3:
@@ -154,7 +177,8 @@ def main() -> None:
     checks = {
         "issuer matches discovery": claims.get("iss") == meta["issuer"],
         "aud is exactly the resource": aud_list == [args.resource],
-        "requested scopes granted": set(args.scope.split()) <= set((claims.get("scope") or "").split()),
+        "requested scopes granted": set(args.scope.split())
+        <= set((claims.get("scope") or "").split()),
         "lifetime is 5 minutes or less": report["lifetime_seconds"] <= 300,
     }
     for name, ok in checks.items():

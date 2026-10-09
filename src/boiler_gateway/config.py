@@ -11,9 +11,17 @@ from pydantic import AnyHttpUrl, Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class Settings(BaseSettings):
+class DeviceSettings(BaseSettings):
+    """Just what's needed to reach the device (ESPHome native API, Noise-encrypted)."""
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
+    esphome_host: str
+    esphome_port: int = Field(default=6053, ge=1, le=65535)
+    esphome_noise_psk: SecretStr
+
+
+class Settings(DeviceSettings):
     # Authorization server (ADR 0004, 0005)
     gateway_issuer: AnyHttpUrl = Field(description="Keycloak realm issuer URL")
     gateway_resource_url: AnyHttpUrl = Field(
@@ -29,11 +37,6 @@ class Settings(BaseSettings):
 
     # Audit (ADR 0007)
     gateway_audit_db: Path = Field(default=Path("data/audit.sqlite"))
-
-    # Device (ESPHome native API, Noise-encrypted)
-    esphome_host: str
-    esphome_port: int = Field(default=6053, ge=1, le=65535)
-    esphome_noise_psk: SecretStr
 
     @field_validator("gateway_resource_url")
     @classmethod
