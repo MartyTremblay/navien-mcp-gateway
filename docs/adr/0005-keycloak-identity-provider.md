@@ -58,3 +58,14 @@ Runner-up: Authelia, for its small footprint and working RFC 8707 support, if a 
 - **Availability.** If Keycloak is down, no new tokens are issued, and once existing tokens expire (within 5 minutes) the gateway denies all calls (P7). For one household, that trade-off favours safety over availability.
 - **Upgrade path.** When Client ID Metadata Documents leave experimental status, revisit pre-registration, since it would let MCP clients connect without manual setup.
 - Keycloak experience transfers directly to enterprise work. Its Red Hat-supported build is common in large organizations.
+
+## Verification (2026-10-09)
+
+Tested against Keycloak 26.8 with the `resource-indicators` feature enabled, using [`tools/oauth_pkce_check.py`](../../tools/oauth_pkce_check.py) and a pre-registered public client (authorization code with PKCE S256, consent required):
+
+- **Audience binding works.** A token requested with `resource=https://boiler.lab.<domain>/mcp` had exactly that value as `aud`, plus the person (`sub`), the agent (`azp`), only the requested scope, and a 300-second lifetime. The authorization response carried `iss` as RFC 9207 requires.
+- **Unknown resources are refused.** A request with `resource=https://example.org/not-the-gateway` failed at the token endpoint with `invalid_target`: "The requested resource is invalid, missing, unknown, or malformed." No token was issued.
+- **Self-registration is blocked by configuration.** The anonymous Trusted Hosts policy has no trusted hosts. Checked by inspection, not by a live registration attempt.
+- **Data minimization.** Keycloak's default `profile` and `email` scopes were removed from the client, so tokens don't carry the person's name or email address, which the gateway doesn't need.
+
+Two setup mistakes surfaced and were fixed: the boiler scopes weren't assigned to the client at first (`invalid_scope`), and the PKCE setting has moved in 26.8 to the client's Capability config.
