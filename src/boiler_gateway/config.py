@@ -38,6 +38,9 @@ class Settings(DeviceSettings):
     # proxy, include the container's own address:port as forwarded by the proxy.
     gateway_allowed_hosts: list[str] = Field(default_factory=lambda: ["127.0.0.1:*", "localhost:*"])
 
+    # Writes (ADR 0008): off by default; while off, write tools aren't registered.
+    gateway_writes_enabled: bool = Field(default=False)
+
     # Audit (ADR 0007)
     gateway_audit_db: Path = Field(default=Path("data/audit.sqlite"))
 

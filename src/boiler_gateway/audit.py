@@ -243,6 +243,16 @@ class AuditLog:
 
     # Reading
 
+    def last_write_attempt(self, tool: str) -> datetime | None:
+        """When the policy last allowed a write for `tool` (ADR 0008 rate limit)."""
+        with self._lock:
+            row = self._db.execute(
+                "SELECT ts FROM audit WHERE kind = 'decision' AND decision = 'allow' "
+                "AND reason = 'policy_ok' AND tool = ? ORDER BY seq DESC LIMIT 1",
+                (tool,),
+            ).fetchone()
+        return datetime.fromisoformat(row["ts"]) if row else None
+
     def head(self) -> tuple[int, str]:
         """The latest (seq, hash), for exporting off the box as an anchor."""
         with self._lock:

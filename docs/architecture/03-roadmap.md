@@ -51,6 +51,8 @@ Status: done 2026-10-09; [compliance check](../compliance/increment-1.md) passed
 
 ## Increment 2: First bounded write
 
+Status: built and tested against a fake boiler (2026-10-09), [ADR 0008](../adr/0008-write-policy-for-bounded-setpoints.md); writes disabled in deployment until the first live write after the installer visit.
+
 **Goal:** one setting can be changed within the gateway's limits, with read-back.
 
 **Scope**

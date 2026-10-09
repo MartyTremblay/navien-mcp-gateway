@@ -1,6 +1,6 @@
 # Threat model
 
-Version 1, for increment 1 (read-only gateway). Status: draft. Updated at the end of each increment as part of its compliance check ([roadmap, phase G](architecture/03-roadmap.md#implementation-governance-phase-g)).
+Version 2: increment 1 (read-only gateway, deployed) plus increment 2 (first bounded write, built and tested, writes disabled in deployment). Status: draft. Updated at the end of each increment as part of its compliance check ([roadmap, phase G](architecture/03-roadmap.md#implementation-governance-phase-g)).
 
 Each threat lists its controls and the evidence that the controls work: an automated test, or a recorded check against the lab. Categories use STRIDE and, where the threat involves the AI agent, the OWASP Top 10 for LLM Applications (2025).
 
@@ -75,6 +75,21 @@ Boundaries: (1) agent to gateway, where every request is authenticated, authoriz
 | T21 | Supply chain: a malicious or vulnerable dependency or install script | Tampering; LLM03 | Direct dependencies pinned, full lock file; install scripts read before running; Keycloak and proxy versions recorded | Reading the Keycloak script found a default admin password, fixed before use | Partly: no hash-pinned installs yet |
 | T22 | The authorization server's experimental features change on upgrade | Elevation | Pinned Keycloak version; the audience test runs after every upgrade | `tools/oauth_pkce_check.py` | Mitigated by process |
 
+## Increment 2: the first write
+
+Threats added with the hot-water tank setpoint tool ([ADR 0008](adr/0008-write-policy-for-bounded-setpoints.md)). Evidence is `tests/test_writes.py`, `tests/test_policy.py` and the command tests in `tests/test_device.py`, run against a fake boiler. Live verification follows the installer visit.
+
+| ID | Threat | Category | Controls | Evidence | Status |
+|---|---|---|---|---|---|
+| T23 | An agent, possibly prompt-injected, requests a value outside safe limits | Elevation; LLM06 | Gateway bounds 40 to 60 °C in 0.5 °C steps, independent of the device's 40 to 82 °C; NaN, infinity, booleans and strings refused | Out-of-range, off-step and invalid values never reach the device, each refusal audited | Mitigated |
+| T24 | Rapid repeated writes (an agent looping, or pushing values back and forth) | Denial of service, Tampering; LLM06 | One write every 2 minutes per tool across all clients, derived from the audit trail | Second write refused; still refused after a restart; a no-change request doesn't consume the limit | Mitigated |
+| T25 | A write reported as successful when the boiler never applied it | Repudiation; LLM09 | Read-back of the boiler's own reported setpoint; `confirmed`, `unconfirmed` or `failed`; never retried | Unconfirmed write reported as such and sent once; failed send reported | Mitigated |
+| T26 | A write happens without an audit record | Repudiation | Policy decision committed before the command; audit failure means no command | Audit failure injected just before the command: nothing sent | Mitigated |
+| T27 | A bug or injected call commands a high-risk entity (power, recirculation, hot button, restart) | Elevation | The adapter refuses any entity not on an explicit allow-list (one entity in this increment) | Command to main power refused by the adapter | Mitigated |
+| T28 | Writes become available before the owner is ready, or during a device fault | Elevation | Kill switch, off by default; while off, the write tool isn't registered; live writes only after the installer visit, with the owner present | Tool absent and calls denied as `unknown_tool` when writes are off | Mitigated by design and process |
+| T29 | An agent gains write permission without the owner noticing | Elevation | Separate `boiler:write` scope; a 403 challenge names it so the client must step up, and the owner approves it on the consent screen | Read-only token gets the `boiler:write` challenge; no command sent | Mitigated; live step-up not yet exercised |
+| T30 | Two writes interleave and confuse read-back | Tampering | Writes serialized by a lock | By design | Mitigated |
+
 ## Lessons from building it
 
 Real incidents during the build, kept because they show where controls failed or held:
@@ -91,9 +106,7 @@ Real incidents during the build, kept because they show where controls failed or
 
 | Threat | Increment |
 |---|---|
-| Out-of-range or rapid repeated writes; writes during a device fault | 2, 3 |
-| Prompt-injected agent pushing values to their limits | 2, 3 |
-| Writes reported as successful without read-back | 2 |
+| The same write threats for the space-heating setpoint, and policy moving into versioned configuration | 3 |
 | An agent approving its own high-risk request; approval replay or expiry | 4 |
 | Audit truncation without an off-box anchor | 5 |
 | Mapping each threat and control to the NIST AI RMF | 5 |

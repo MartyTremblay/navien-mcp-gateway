@@ -11,3 +11,4 @@ One file per decision: `NNNN-short-title.md` with Context, Decision, Consequence
 | [0005](0005-keycloak-identity-provider.md) | Keycloak as the identity provider | Accepted |
 | [0006](0006-hosting-and-tls.md) | Hosting and TLS on the local network | Accepted |
 | [0007](0007-audit-store.md) | A tamper-evident SQLite audit store in the gateway | Accepted |
+| [0008](0008-write-policy-for-bounded-setpoints.md) | Write policy for bounded setpoints | Accepted |

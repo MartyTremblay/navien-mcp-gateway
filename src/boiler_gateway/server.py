@@ -27,6 +27,7 @@ from __future__ import annotations
 import asyncio
 import contextvars
 import logging
+import math
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -51,7 +52,7 @@ from boiler_gateway import policy
 from boiler_gateway.audit import AuditError, AuditLog, Identity
 from boiler_gateway.auth import GatewayTokenVerifier, JwksKeys, identity_from
 from boiler_gateway.config import Settings
-from boiler_gateway.device import Device
+from boiler_gateway.device import CommandRefused, Device
 from boiler_gateway.status import build_status
 
 log = logging.getLogger(__name__)
@@ -72,10 +73,17 @@ async def _audit_decision(audit: AuditLog, *args: Any) -> None:
 class GatewayPolicyMiddleware:
     """Audit every MCP request and enforce per-tool scopes before dispatch."""
 
-    def __init__(self, app: ASGIApp, audit: AuditLog, resource_metadata_url: str):
+    def __init__(
+        self,
+        app: ASGIApp,
+        audit: AuditLog,
+        resource_metadata_url: str,
+        registered_tools: frozenset[str],
+    ):
         self.app = app
         self.audit = audit
         self.resource_metadata_url = resource_metadata_url
+        self.registered_tools = registered_tools
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http" or scope.get("method") != "POST":
@@ -108,7 +116,11 @@ class GatewayPolicyMiddleware:
                 await self._insufficient_scope(list(policy.SCOPES_SUPPORTED), send)
                 return
             if method == "tools/call":
-                missing = policy.missing_scopes(tool or "", who.scopes)
+                missing = (
+                    policy.missing_scopes(tool, who.scopes)
+                    if tool in self.registered_tools
+                    else None
+                )
                 if missing is None:
                     await _audit_decision(
                         self.audit, request_id, who, tool, None, "deny", "unknown_tool"
@@ -236,6 +248,29 @@ def build_app(
         )
         return result
 
+    registered = {"get_boiler_status"}
+    if settings.gateway_writes_enabled:
+        rule = policy.HOT_WATER_TANK
+        write_lock = asyncio.Lock()
+        minutes = int(rule.min_interval.total_seconds() // 60)
+
+        @mcp.tool(
+            name=rule.tool,
+            title="Set hot-water tank setpoint",
+            description=(
+                f"Set the hot-water tank setpoint, between {rule.minimum:g} and "
+                f"{rule.maximum:g} °C in {rule.step:g} °C steps. At most one change every "
+                f"{minutes} minutes. The result says whether the boiler confirmed the new value."
+            ),
+            annotations=ToolAnnotations(
+                readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False
+            ),
+        )
+        async def set_hot_water_tank_setpoint(celsius: float) -> dict[str, Any]:
+            return await _write_setpoint(rule, celsius, audit, device, write_lock)
+
+        registered.add(rule.tool)
+
     app = mcp.streamable_http_app(
         streamable_http_path=MCP_PATH,
         stateless_http=True,
@@ -252,7 +287,9 @@ def build_app(
     metadata_url = str(build_resource_metadata_url(settings.gateway_resource_url))
     for route in app.router.routes:
         if isinstance(route, Route) and route.path == MCP_PATH:
-            route.app = GatewayPolicyMiddleware(route.app, audit, metadata_url)
+            route.app = GatewayPolicyMiddleware(
+                route.app, audit, metadata_url, frozenset(registered)
+            )
             break
     else:  # pragma: no cover - would mean the SDK changed shape
         raise RuntimeError("MCP route not found; refusing to start without the policy layer")
@@ -270,3 +307,119 @@ def build_app(
 
     app.router.lifespan_context = lifespan
     return app
+
+
+async def _write_setpoint(
+    rule: policy.SetpointRule,
+    value: float,
+    audit: AuditLog,
+    device: Device,
+    lock: asyncio.Lock,
+) -> dict[str, Any]:
+    """Bounded, rate-limited, audited setpoint change with read-back (ADR 0008)."""
+    started = time.perf_counter()
+    access = get_access_token()
+    who = identity_from(access) if access else Identity(None, None)
+    request_id = _REQUEST_ID.get() or str(uuid.uuid4())
+    args = {"celsius": value}
+
+    def elapsed_ms() -> int:
+        return round((time.perf_counter() - started) * 1000)
+
+    async def refuse(reason: str, message: str) -> None:
+        await _audit_decision(audit, request_id, who, rule.tool, args, "deny", reason)
+        raise ToolError(message)
+
+    if access is None or policy.missing_scopes(rule.tool, who.scopes):
+        await refuse(
+            "insufficient_scope", "Not authorized: this tool needs the boiler:write scope."
+        )
+    if reason := policy.check_value(rule, value):
+        await refuse(
+            reason,
+            f"Refused: the setpoint must be between {rule.minimum:g} and {rule.maximum:g} °C "
+            f"in {rule.step:g} °C steps.",
+        )
+
+    async with lock:  # one write at a time
+        last = await asyncio.to_thread(audit.last_write_attempt, rule.tool)
+        if wait := policy.rate_limit_remaining(rule, last):
+            await refuse(
+                "rate_limited",
+                f"Refused: one change every {int(rule.min_interval.total_seconds() // 60)} "
+                f"minutes. Try again in {math.ceil(wait.total_seconds())} seconds.",
+            )
+        snapshot = device.snapshot()
+        if not snapshot.connected:
+            await refuse(
+                "device_disconnected",
+                "Refused: the gateway isn't connected to the boiler, so a change couldn't be "
+                "confirmed.",
+            )
+        before_reading = snapshot.readings.get(rule.reported_entity)
+        before = before_reading.value if before_reading else None
+
+        if before is not None and abs(float(before) - value) < 0.01:
+            await _audit_decision(audit, request_id, who, rule.tool, args, "allow", "no_change")
+            await asyncio.to_thread(
+                audit.record_outcome,
+                request_id,
+                "confirmed",
+                elapsed_ms(),
+                f"no_change at={before}",
+            )
+            return {
+                "result": "confirmed",
+                "changed": False,
+                "requested_c": value,
+                "previous_c": before,
+                "reported_c": before,
+                "note": "The boiler already reports this setpoint; no command was sent.",
+            }
+
+        # Committed before anything is sent: if this fails, nothing reaches the device.
+        await _audit_decision(audit, request_id, who, rule.tool, args, "allow", "policy_ok")
+        try:
+            device.set_number(rule.command_entity, value)
+        except CommandRefused as exc:
+            await asyncio.to_thread(
+                audit.record_outcome, request_id, "failed", elapsed_ms(), f"send_failed:{exc}"
+            )
+            return {
+                "result": "failed",
+                "changed": False,
+                "requested_c": value,
+                "previous_c": before,
+                "note": "The command could not be sent. The setpoint is unchanged.",
+            }
+
+        sent = time.perf_counter()
+        reading = await device.wait_for_value(
+            rule.reported_entity, value, policy.READ_BACK_TIMEOUT_SECONDS
+        )
+        confirm_s = round(time.perf_counter() - sent, 1)
+        after_reading = reading or device.snapshot().readings.get(rule.reported_entity)
+        after = after_reading.value if after_reading else None
+        result = "confirmed" if reading else "unconfirmed"
+        await asyncio.to_thread(
+            audit.record_outcome,
+            request_id,
+            result,
+            elapsed_ms(),
+            f"before={before} after={after} wait_s={confirm_s}",
+        )
+        return {
+            "result": result,
+            "changed": result == "confirmed",
+            "requested_c": value,
+            "previous_c": before,
+            "reported_c": after,
+            "confirmation_seconds": confirm_s if reading else None,
+            "note": (
+                "The boiler reported the new setpoint."
+                if reading
+                else f"The command was sent, but the boiler didn't report {value:g} °C within "
+                f"{policy.READ_BACK_TIMEOUT_SECONDS:g} seconds. It may or may not have applied "
+                "it; check the status before trying again."
+            ),
+        }

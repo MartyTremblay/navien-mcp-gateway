@@ -111,3 +111,51 @@ async def test_reading_never_sends_commands(device):
     device._client.on_state(SensorState(1, 51.0))
     device.snapshot()
     assert device._client.commands == []
+
+
+# Commands (ADR 0008)
+
+import asyncio
+
+from boiler_gateway.device import CommandRefused
+
+WRITABLE_ENTITY = Entity(5, "navien_dhw_setpoint", "Navien DHW Setpoint", "°C")
+POWER = Entity(6, "navien_main_power", "Navien Main Power")
+
+
+@pytest.fixture
+async def writable_device():
+    cfg = DeviceSettings(_env_file=None, esphome_host="192.0.2.10", esphome_noise_psk="dGVzdA==")
+    dev = EsphomeDevice(cfg)
+    dev._client = FakeClient([*ENTITIES, WRITABLE_ENTITY, POWER])
+    await dev._on_connect()
+    return dev
+
+
+async def test_only_allow_listed_entities_can_be_commanded(writable_device):
+    with pytest.raises(CommandRefused):
+        writable_device.set_number("navien_main_power", 0)
+    assert writable_device._client.commands == []
+
+
+async def test_allowed_command_is_sent_once(writable_device):
+    writable_device.set_number("navien_dhw_setpoint", 55)
+    assert writable_device._client.commands == ["number_command"]
+
+
+async def test_no_command_when_disconnected(writable_device):
+    await writable_device._on_disconnect(expected=False)
+    with pytest.raises(CommandRefused):
+        writable_device.set_number("navien_dhw_setpoint", 55)
+
+
+async def test_wait_for_value_sees_the_reported_change(writable_device):
+    loop = asyncio.get_running_loop()
+    loop.call_later(0.05, writable_device._on_state, SensorState(1, 55.0))
+    reading = await writable_device.wait_for_value("navien_outlet_temp", 55, timeout=1)
+    assert reading is not None and reading.value == 55.0
+
+
+async def test_wait_for_value_times_out(writable_device):
+    writable_device._on_state(SensorState(1, 54.0))
+    assert await writable_device.wait_for_value("navien_outlet_temp", 55, timeout=0.1) is None
