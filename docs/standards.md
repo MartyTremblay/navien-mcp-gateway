@@ -2,7 +2,7 @@
 
 Every framework, standard and specification this project relies on, where it's applied, and whether the documentation names it explicitly or the code uses it without naming it. Compiled 2026-10-09 from the repository's docs and code.
 
-A small project for one boiler touches more than 40 of them. Keeping that many in view, with the right clause for each decision, is one place where an AI assistant helped the architecture work; see [How it's built](../README.md#how-its-built). Every citation was checked against its source rather than taken from memory.
+A small project for one boiler touches 40 of them (some rows group related items). Keeping that many in view, with the right clause for each decision, is one place where an AI assistant helped the architecture work; see [How it's built](../README.md#how-its-built). Every citation was checked against its source rather than taken from memory.
 
 **Status:** *Explicit* means a document names it. *Implicit* means the code or configuration depends on it but the docs don't name it.
 
