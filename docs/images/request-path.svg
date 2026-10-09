@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1130" width="1000" height="1130" font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>The path of every request through the gateway</title>
+  <defs>
+    <marker id="down" viewBox="0 0 10 10" refX="5" refY="9" markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M0,0 L10,0 L5,10 z" fill="#33475b"/>
+    </marker>
+    <marker id="right" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b03a2e"/>
+    </marker>
+    <style>
+      .h { font-size: 30px; font-weight: 700; fill: #1f2933; }
+      .hs { font-size: 18px; fill: #52606d; }
+      .stage { fill: #ffffff; stroke: #33475b; stroke-width: 2; }
+      .stage-key { fill: #fff7e6; stroke: #b7791f; stroke-width: 2.5; }
+      .refuse { fill: #fdf0ee; stroke: #d9a39b; stroke-width: 1.5; }
+      .n { font-size: 18px; font-weight: 700; fill: #ffffff; }
+      .t { font-size: 21px; font-weight: 700; fill: #1f2933; }
+      .s { font-size: 16px; fill: #52606d; }
+      .r { font-size: 16px; fill: #8a2c22; }
+      .rt { font-size: 15px; font-weight: 700; fill: #8a2c22; }
+      .down { stroke: #33475b; stroke-width: 2.5; marker-end: url(#down); }
+      .out { stroke: #b03a2e; stroke-width: 2; stroke-dasharray: 6 5; marker-end: url(#right); }
+    </style>
+  </defs>
+
+  <rect width="1000" height="1130" fill="#ffffff"/>
+  <text x="50" y="58" class="h">Every request, every time</text>
+  <text x="50" y="88" class="hs">Read top to bottom. A request that fails a layer stops there.</text>
+  <text x="50" y="112" class="hs">From layer 3 on, every refusal is also recorded in the audit trail, with its reason.</text>
+
+  <!-- Column headers -->
+  <text x="110" y="138" class="rt" style="fill:#52606d">LAYER</text>
+  <text x="690" y="138" class="rt">IF IT FAILS</text>
+
+  <!-- Stage 1 -->
+  <circle cx="75" cy="185" r="20" fill="#33475b"/><text x="75" y="191" text-anchor="middle" class="n">1</text>
+  <rect x="110" y="145" width="520" height="80" rx="12" class="stage"/>
+  <text x="130" y="178" class="t">Encrypted connection</text>
+  <text x="130" y="204" class="s">Lab reverse proxy, trusted certificate</text>
+  <line x1="630" y1="185" x2="680" y2="185" class="out"/>
+  <rect x="685" y="153" width="270" height="64" rx="10" class="refuse"/>
+  <text x="700" y="181" class="r">No HTTPS, no connection;</text>
+  <text x="700" y="203" class="r">containers not reachable directly</text>
+  <line x1="370" y1="225" x2="370" y2="248" stroke="#33475b" stroke-width="2.5"/><path d="M362,246 L378,246 L370,258 z" fill="#33475b"/>
+
+  <!-- Stage 2 -->
+  <circle cx="75" cy="303" r="20" fill="#33475b"/><text x="75" y="309" text-anchor="middle" class="n">2</text>
+  <rect x="110" y="263" width="520" height="80" rx="12" class="stage"/>
+  <text x="130" y="296" class="t">Host and Origin checks</text>
+  <text x="130" y="322" class="s">Blocks web pages attacking via the browser</text>
+  <line x1="630" y1="303" x2="680" y2="303" class="out"/>
+  <rect x="685" y="271" width="270" height="64" rx="10" class="refuse"/>
+  <text x="700" y="299" class="r">Refused (400 or 403)</text>
+  <text x="700" y="321" class="r">DNS rebinding stopped</text>
+  <line x1="370" y1="343" x2="370" y2="366" stroke="#33475b" stroke-width="2.5"/><path d="M362,364 L378,364 L370,376 z" fill="#33475b"/>
+
+  <!-- Stage 3 -->
+  <circle cx="75" cy="421" r="20" fill="#33475b"/><text x="75" y="427" text-anchor="middle" class="n">3</text>
+  <rect x="110" y="381" width="520" height="80" rx="12" class="stage"/>
+  <text x="130" y="414" class="t">Token validation</text>
+  <text x="130" y="440" class="s">Signature, issuer, expiry; audience = this gateway only</text>
+  <line x1="630" y1="421" x2="680" y2="421" class="out"/>
+  <rect x="685" y="389" width="270" height="64" rx="10" class="refuse"/>
+  <text x="700" y="417" class="r">401, audited with reason</text>
+  <text x="700" y="439" class="r">e.g. wrong_audience, expired</text>
+  <line x1="370" y1="461" x2="370" y2="484" stroke="#33475b" stroke-width="2.5"/><path d="M362,482 L378,482 L370,494 z" fill="#33475b"/>
+
+  <!-- Stage 4 -->
+  <circle cx="75" cy="539" r="20" fill="#33475b"/><text x="75" y="545" text-anchor="middle" class="n">4</text>
+  <rect x="110" y="499" width="520" height="80" rx="12" class="stage"/>
+  <text x="130" y="532" class="t">Permission for this tool</text>
+  <text x="130" y="558" class="s">boiler:read or boiler:write; neither implies the other</text>
+  <line x1="630" y1="539" x2="680" y2="539" class="out"/>
+  <rect x="685" y="507" width="270" height="64" rx="10" class="refuse"/>
+  <text x="700" y="535" class="r">403 insufficient_scope;</text>
+  <text x="700" y="557" class="r">owner must approve more</text>
+  <line x1="370" y1="579" x2="370" y2="602" stroke="#33475b" stroke-width="2.5"/><path d="M362,600 L378,600 L370,612 z" fill="#33475b"/>
+
+  <!-- Stage 5 -->
+  <circle cx="75" cy="657" r="20" fill="#b7791f"/><text x="75" y="663" text-anchor="middle" class="n">5</text>
+  <rect x="110" y="617" width="520" height="80" rx="12" class="stage-key"/>
+  <text x="130" y="650" class="t">Decision recorded first</text>
+  <text x="130" y="676" class="s">Committed to the hash-chained audit before acting</text>
+  <line x1="630" y1="657" x2="680" y2="657" class="out"/>
+  <rect x="685" y="625" width="270" height="64" rx="10" class="refuse"/>
+  <text x="700" y="653" class="r">Can't record it?</text>
+  <text x="700" y="675" class="r">Then nothing happens (503)</text>
+  <line x1="370" y1="697" x2="370" y2="720" stroke="#33475b" stroke-width="2.5"/><path d="M362,718 L378,718 L370,730 z" fill="#33475b"/>
+
+  <!-- Stage 6 -->
+  <circle cx="75" cy="775" r="20" fill="#33475b"/><text x="75" y="781" text-anchor="middle" class="n">6</text>
+  <rect x="110" y="735" width="520" height="80" rx="12" class="stage"/>
+  <text x="130" y="768" class="t">The tool and its policy</text>
+  <text x="130" y="794" class="s">Curated read-out; for writes: bounds, rate limit</text>
+  <line x1="630" y1="775" x2="680" y2="775" class="out"/>
+  <rect x="685" y="743" width="270" height="64" rx="10" class="refuse"/>
+  <text x="700" y="771" class="r">Refused before the device</text>
+  <text x="700" y="793" class="r">e.g. out_of_bounds, rate_limited</text>
+  <line x1="370" y1="815" x2="370" y2="838" stroke="#33475b" stroke-width="2.5"/><path d="M362,836 L378,836 L370,848 z" fill="#33475b"/>
+
+  <!-- Stage 7 -->
+  <circle cx="75" cy="893" r="20" fill="#33475b"/><text x="75" y="899" text-anchor="middle" class="n">7</text>
+  <rect x="110" y="853" width="520" height="80" rx="12" class="stage"/>
+  <text x="130" y="886" class="t">Device adapter</text>
+  <text x="130" y="912" class="s">Allow-listed entities only; the boiler confirms changes</text>
+  <line x1="630" y1="893" x2="680" y2="893" class="out"/>
+  <rect x="685" y="861" width="270" height="64" rx="10" class="refuse"/>
+  <text x="700" y="889" class="r">Anything else refused;</text>
+  <text x="700" y="911" class="r">no echo = "unconfirmed"</text>
+  <line x1="370" y1="933" x2="370" y2="956" stroke="#33475b" stroke-width="2.5"/><path d="M362,954 L378,954 L370,966 z" fill="#33475b"/>
+
+  <!-- Boiler and outcome -->
+  <rect x="110" y="971" width="520" height="70" rx="12" fill="#eef7ee" stroke="#8dbf8d" stroke-width="2"/>
+  <text x="130" y="1004" class="t">Boiler</text>
+  <text x="130" y="1028" class="s">Outcome recorded as a second audit entry</text>
+
+  <text x="50" y="1088" class="hs">Bounds, rate limits and boiler-confirmed changes apply to writes, which are built</text>
+  <text x="50" y="1112" class="hs">but stay switched off until deliberately enabled (ADR 0008).</text>
+</svg>
