@@ -34,6 +34,9 @@ class Settings(DeviceSettings):
     gateway_bind_host: str = Field(default="127.0.0.1")
     gateway_port: int = Field(default=8080, ge=1, le=65535)
     gateway_allowed_origins: list[str] = Field(default_factory=list)
+    # Host header values accepted (DNS-rebinding protection). Behind the lab
+    # proxy, include the container's own address:port as forwarded by the proxy.
+    gateway_allowed_hosts: list[str] = Field(default_factory=lambda: ["127.0.0.1:*", "localhost:*"])
 
     # Audit (ADR 0007)
     gateway_audit_db: Path = Field(default=Path("data/audit.sqlite"))

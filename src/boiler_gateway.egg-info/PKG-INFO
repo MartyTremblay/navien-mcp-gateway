@@ -13,6 +13,7 @@ Provides-Extra: dev
 Requires-Dist: pytest==9.1.1; extra == "dev"
 Requires-Dist: pytest-asyncio==1.4.0; extra == "dev"
 Requires-Dist: ruff==0.16.10; extra == "dev"
+Requires-Dist: httpx==0.28.1; extra == "dev"
 
 # navien-mcp-gateway
 
@@ -35,6 +36,16 @@ A home boiler stands in for an enterprise system of record. It is a real device 
 The reasoning matters as much as the code. Each design choice is recorded as an [architecture decision record](docs/adr/). A threat model covering prompt injection, over-broad tools and stolen client tokens is planned, and the controls will be mapped to the NIST AI Risk Management Framework and ISO/IEC 42001, so the path from framework to working control is explicit.
 
 Status: planning.
+
+## Development
+
+```sh
+python3 -m venv .venv
+.venv/bin/pip install -e '.[dev]'
+.venv/bin/pytest
+```
+
+Direct dependencies are pinned in `pyproject.toml`; `requirements.lock` records the full resolved set. Configuration comes from environment variables or a `.env` file; `.env.example` lists the names. Architecture and decisions are in [docs/architecture](docs/architecture/) and [docs/adr](docs/adr/); the delivery plan is the [roadmap](docs/architecture/03-roadmap.md).
 
 ## How it's built
 

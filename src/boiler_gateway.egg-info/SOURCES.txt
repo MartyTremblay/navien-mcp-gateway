@@ -1,10 +1,16 @@
 README.md
 pyproject.toml
 src/boiler_gateway/__init__.py
+src/boiler_gateway/audit.py
+src/boiler_gateway/auth.py
 src/boiler_gateway/config.py
+src/boiler_gateway/device.py
 src/boiler_gateway.egg-info/PKG-INFO
 src/boiler_gateway.egg-info/SOURCES.txt
 src/boiler_gateway.egg-info/dependency_links.txt
 src/boiler_gateway.egg-info/requires.txt
 src/boiler_gateway.egg-info/top_level.txt
+tests/test_audit.py
+tests/test_auth.py
 tests/test_config.py
+tests/test_device.py
