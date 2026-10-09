@@ -37,6 +37,12 @@ flowchart LR
 **Exit criteria**
 
 - At least one real MCP client connects through the full sign-in and reads the status. This tests the client-compatibility risk from ADR 0003.
+
+**First client: Claude Code** (as an editor extension), registered in Keycloak as a pre-registered public client with PKCE S256 and a fixed loopback callback port. Checked 2026-10-09 against each tool's documentation:
+
+- Claude Code negotiates MCP revision 2026-07-28 by default, accepts a pre-registered client ID with a fixed callback port, and starts discovery from Protected Resource Metadata.
+- VS Code implements revision 2025-11-25, and support for 2026-07-28 is an open issue (`microsoft/vscode#329848`). Its open-source build, VSCodium, doesn't ship the built-in chat and MCP client at all. VS Code-family clients would need the gateway to also support 2025-11-25, which needs its own ADR.
+- Unknown until tested: whether Claude Code sends the RFC 8707 `resource` parameter. If not, the fallback in ADR 0005 applies to that one client.
 - Tests show a token without `boiler:read`, an expired token and a token for another audience are all refused, and each refusal is audited.
 - The audit verification command reports an intact chain.
 - Home Assistant still works unchanged (P9).
