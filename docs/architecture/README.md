@@ -12,6 +12,6 @@ This project follows a lightweight version of the TOGAF Architecture Development
 | H. Change Management | New ADRs that supersede old ones | Ongoing |
 | Requirements Management | Requirements register tracing requirement → threat → control → NIST AI RMF function | Planned |
 
-Decisions made along the way are recorded as [ADRs](../adr/). Threats, controls and their evidence are in the [threat model](../threat-model.md). Each ADR should name the principles it applies or trades off.
+Decisions made along the way are recorded as [ADRs](../adr/). Threats, controls and their evidence are in the [threat model](../threat-model.md). Every framework and standard used is listed in the [standards inventory](../standards.md). Each ADR should name the principles it applies or trades off.
 
 Deliberately left out: the full content metamodel, an architecture repository, capability-based planning and detailed business architecture. At this scale they would add documents without adding insight.
