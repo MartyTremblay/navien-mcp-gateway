@@ -27,6 +27,9 @@ def main() -> None:
             port=settings.gateway_port,
             proxy_headers=False,
             server_header=False,
+            # Clients hold long-lived streams (subscriptions/listen); don't wait forever
+            # for them on shutdown. They reconnect.
+            timeout_graceful_shutdown=5,
             log_level="info",
         )
     finally:
