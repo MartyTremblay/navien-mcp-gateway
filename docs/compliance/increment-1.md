@@ -42,7 +42,7 @@ Smaller operational fixes (no `.env` file read in production; bounded graceful s
 
 [Version 1](../threat-model.md) covers 22 threats with controls and evidence, updated during deployment (T2 live evidence, T12 incident and fix). Open or partly mitigated:
 
-- **T17 open**: any device on the household network can try the controller's API port and use up its connection slots. Planned: a router rule allowing the port only from Home Assistant and the gateway.
+- **T17 accepted** (owner decision, 2026-10-09): any device on the household network can try the controller's API port and use up its connection slots. The impact is availability, not control; a router rule was considered and not adopted.
 - **T14 partial**: audit truncation needs an off-box anchor (increment 5).
 - **T16 partial**: Home Assistant holds the device key by design.
 - **T21 partial**: installs are version-pinned, not hash-pinned.
@@ -63,7 +63,6 @@ Increment 1 is read-only and changed no boiler setting. Infrastructure changes m
 
 ## Carried forward
 
-- T17: router rule for the device's API port.
 - Narrow the gateway's allowed `Host` values to the one the reverse proxy actually forwards.
 - Test whether the lab reverse proxy buffers streamed responses (ADR 0006); the long-lived `subscriptions/listen` stream works, but buffering hasn't been measured.
 - Make the lab and household reverse proxy admin pages visibly different (an operator error during deployment came from their being identical).
