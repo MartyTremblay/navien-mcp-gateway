@@ -50,7 +50,9 @@ HOT_WATER_TANK = SetpointRule(
     reported_entity="navien_dhw_set_temp",
     minimum=40.0,
     maximum=60.0,
-    step=0.5,
+    # The entity accepts 0.5 °C, but the boiler ignores half degrees for the tank
+    # (first live write, 2026-10-13: 54.5 unconfirmed, 55 confirmed). ADR 0008.
+    step=1.0,
     min_interval=timedelta(minutes=2),
 )
 

@@ -5,7 +5,7 @@ import pytest
 from boiler_gateway.policy import HOT_WATER_TANK, check_value, missing_scopes, rate_limit_remaining
 
 
-@pytest.mark.parametrize("value", [40, 40.5, 54, 59.5, 60])
+@pytest.mark.parametrize("value", [40, 54, 55.0, 59, 60])
 def test_values_inside_bounds_on_a_step(value):
     assert check_value(HOT_WATER_TANK, value) is None
 
@@ -17,6 +17,8 @@ def test_values_inside_bounds_on_a_step(value):
         (60.5, "out_of_bounds"),
         (82, "out_of_bounds"),
         (54.25, "not_a_valid_step"),
+        (54.5, "not_a_valid_step"),  # the boiler ignores half degrees
+        (59.5, "not_a_valid_step"),
         (float("nan"), "invalid_value"),
         (float("inf"), "invalid_value"),
         (True, "invalid_value"),

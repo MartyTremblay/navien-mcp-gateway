@@ -207,6 +207,7 @@ def test_refused_call_ignores_an_oversized_body(make):
         (39.5, "out_of_bounds"),
         (82, "out_of_bounds"),
         (54.3, "not_a_valid_step"),
+        (54.5, "not_a_valid_step"),  # sent live on 2026-10-13; the boiler ignored it
     ],
 )
 def test_values_outside_policy_never_reach_the_device(make, value, reason):

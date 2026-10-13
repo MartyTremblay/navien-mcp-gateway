@@ -81,7 +81,7 @@ Threats added with the hot-water tank setpoint tool ([ADR 0008](adr/0008-write-p
 
 | ID | Threat | Category | Controls | Evidence | Status |
 |---|---|---|---|---|---|
-| T23 | An agent, possibly prompt-injected, requests a value outside safe limits | Elevation; LLM06 | Gateway bounds 40 to 60 °C in 0.5 °C steps, independent of the device's 40 to 82 °C; NaN, infinity, booleans and strings refused | Out-of-range, off-step and invalid values never reach the device, each refusal audited | Mitigated |
+| T23 | An agent, possibly prompt-injected, requests a value outside safe limits | Elevation; LLM06 | Gateway bounds 40 to 60 °C in whole degrees (half degrees are ignored by the boiler, found live), independent of the device's 40 to 82 °C; NaN, infinity, booleans and strings refused | Out-of-range, off-step and invalid values never reach the device, each refusal audited | Mitigated |
 | T24 | Rapid repeated writes (an agent looping, or pushing values back and forth) | Denial of service, Tampering; LLM06 | One write every 2 minutes per tool across all clients, derived from the audit trail | Second write refused; still refused after a restart; a no-change request doesn't consume the limit | Mitigated |
 | T25 | A write reported as successful when the boiler never applied it | Repudiation; LLM09 | Read-back of the boiler's own reported setpoint; `confirmed`, `unconfirmed` or `failed`; never retried | Unconfirmed write reported as such and sent once; failed send reported | Mitigated |
 | T26 | A write happens without an audit record | Repudiation | Policy decision committed before the command; audit failure means no command | Audit failure injected just before the command: nothing sent | Mitigated |

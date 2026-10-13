@@ -19,7 +19,8 @@ The write tool is reachable by an AI agent, which may be steered by prompt injec
 
 **Bounds (gateway policy, independent of the device)**
 
-- 40 to 60 °C, in 0.5 °C steps. Anything else is refused before the device is contacted.
+- 40 to 60 °C, in whole degrees. Anything else is refused before the device is contacted.
+- Amended after the first live write (2026-10-13). The original step was 0.5 °C, matching the entity. Live, the boiler ignored 54.5 °C (read-back `unconfirmed` after 20 seconds, setpoint unchanged) and confirmed 55 °C in 5.2 seconds. The entity accepts half degrees; the boiler doesn't apply them to the tank. The gateway now refuses values the boiler would ignore, instead of sending them and reporting `unconfirmed`. Lesson: the device's advertised range isn't its behaviour; take bounds from what read-back confirms.
 
 **Rate limit**
 
