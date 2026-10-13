@@ -77,7 +77,7 @@ Boundaries: (1) agent to gateway, where every request is authenticated, authoriz
 
 ## Increment 2: the first write
 
-Threats added with the hot-water tank setpoint tool ([ADR 0008](adr/0008-write-policy-for-bounded-setpoints.md)). Evidence is `tests/test_writes.py`, `tests/test_policy.py` and the command tests in `tests/test_device.py`, run against a fake boiler. Live verification follows the installer visit.
+Threats added with the hot-water tank setpoint tool ([ADR 0008](adr/0008-write-policy-for-bounded-setpoints.md)). Evidence is `tests/test_writes.py`, `tests/test_policy.py` and the command tests in `tests/test_device.py`, run against a fake boiler, and the first live write on 2026-10-13 (refusals, a confirmed write, an unconfirmed write and the restore, all in the audit trail).
 
 | ID | Threat | Category | Controls | Evidence | Status |
 |---|---|---|---|---|---|
@@ -87,7 +87,7 @@ Threats added with the hot-water tank setpoint tool ([ADR 0008](adr/0008-write-p
 | T26 | A write happens without an audit record | Repudiation | Policy decision committed before the command; audit failure means no command | Audit failure injected just before the command: nothing sent | Mitigated |
 | T27 | A bug or injected call commands a high-risk entity (power, recirculation, hot button, restart) | Elevation | The adapter refuses any entity not on an explicit allow-list (one entity in this increment) | Command to main power refused by the adapter | Mitigated |
 | T28 | Writes become available before the owner is ready, or during a device fault | Elevation | Kill switch, off by default; while off, the write tool isn't registered; live writes only after the installer visit, with the owner present | Tool absent and calls denied as `unknown_tool` when writes are off | Mitigated by design and process |
-| T29 | An agent gains write permission without the owner noticing | Elevation | Separate `boiler:write` scope; a 403 challenge names it so the client must step up, and the owner approves it on the consent screen | Read-only token gets the `boiler:write` challenge; no command sent | Mitigated; live step-up not yet exercised |
+| T29 | An agent gains write permission without the owner noticing | Elevation | Separate `boiler:write` scope, never requested by default (the gateway advertises only `boiler:read`); a 403 challenge names `boiler:write`; the owner approves it on the consent screen. The client in use (Claude Code) doesn't step up: it requests only the scopes pinned in its configuration, so write access is granted by pinning the scope for a test and removing it afterwards, plus ending the sign-in session at the identity provider | Read-only token gets the `boiler:write` challenge; no command sent. Live, 2026-10-13: two refusals before the scope was pinned; consent screen listed the write permission once pinned; after unpinning, a write attempt was refused with the requested value and the read-only scopes recorded | Mitigated at the gateway. Accepted: consent happens at sign-in for a time-boxed session, not at the moment of the write, until the client supports step-up |
 | T30 | Two writes interleave and confuse read-back | Tampering | Writes serialized by a lock | By design | Mitigated |
 
 ## Lessons from building it
@@ -100,6 +100,8 @@ Real incidents during the build, kept because they show where controls failed or
 - **A crash loop looked healthy.** After moving secrets out of a service file, Keycloak restarted 30 times while `is-active` reported `active`. The restart count showed it.
 - **The gateway's own wording misled an agent.** The status tool called each timestamp `last_changed`, but ESPHome re-sends every value when a connection is made. An agent saw an error counter with a fresh timestamp and suggested a new boiler fault, when the count had been the same since the day before. Renamed to `last_reported`, with the connection time alongside. A tool's field names are part of what the model reasons over, so they need the same care as its access controls.
 - **The real client didn't send `resource`.** The roadmap listed it as a risk to test rather than assume. The first token was refused for its audience, the fallback was applied to that client only, and the evidence is in the audit trail.
+- **The device's advertised range wasn't its behaviour.** The tank setpoint entity accepts half degrees, and the gateway allowed them. Live, the boiler ignored 54.5 °C and confirmed 55 °C. Only read-back caught it: a gateway that trusted the command would have reported success. The bounds now follow what the boiler confirms.
+- **A control that depends on the client.** The MCP specification expects clients to step up when a 403 names a missing scope. The client in use didn't; it re-requested the scopes it already had. The gateway held, but the planned way to grant write access didn't exist, and the workaround (pinning the scope) grants it at sign-in instead of on demand. Check that each party in a control can actually do its part.
 - **Install script defaults.** A community install script set a well-known bootstrap admin password. Reading scripts before running them is a cheap control that paid off.
 
 ## Deferred to later increments
