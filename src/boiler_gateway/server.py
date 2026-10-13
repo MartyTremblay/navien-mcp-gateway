@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import asyncio
 import contextvars
+import json
 import logging
 import math
 import time
@@ -49,7 +50,7 @@ from starlette.routing import Route
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from boiler_gateway import policy
-from boiler_gateway.audit import AuditError, AuditLog, Identity
+from boiler_gateway.audit import AuditError, AuditLog, Identity, looks_like_credential
 from boiler_gateway.auth import GatewayTokenVerifier, JwksKeys, identity_from
 from boiler_gateway.config import Settings
 from boiler_gateway.device import CommandRefused, Device
@@ -68,6 +69,41 @@ INSTRUCTIONS = (
 
 async def _audit_decision(audit: AuditLog, *args: Any) -> None:
     await asyncio.to_thread(audit.record_decision, *args)
+
+
+# Tool arguments here are a few numbers; anything larger isn't read or recorded.
+MAX_RECORDED_BODY_BYTES = 16 * 1024
+
+
+async def _requested_arguments(tool: str, receive: Receive) -> dict[str, Any] | None:
+    """The arguments of a refused tool call, for the audit record, or None.
+
+    Only for requests that are answered without being passed on, because it
+    consumes the body. The body hasn't been validated yet, so the values are
+    recorded as claimed, with two guards: the body must name the same tool as the `Mcp-Name`
+    header (or the record would pair one tool with another's arguments), and
+    arguments with credential-like names are dropped rather than stored.
+    """
+    body = b""
+    while True:
+        message = await receive()
+        if message["type"] != "http.request":
+            return None
+        body += message.get("body", b"")
+        if len(body) > MAX_RECORDED_BODY_BYTES:
+            return None
+        if not message.get("more_body", False):
+            break
+    try:
+        params = json.loads(body).get("params")
+    except (ValueError, AttributeError):
+        return None
+    if not isinstance(params, dict) or params.get("name") != tool:
+        return None
+    arguments = params.get("arguments")
+    if not isinstance(arguments, dict) or any(looks_like_credential(k) for k in arguments):
+        return None
+    return arguments
 
 
 class GatewayPolicyMiddleware:
@@ -110,8 +146,9 @@ class GatewayPolicyMiddleware:
             if not set(policy.SCOPES_SUPPORTED) <= set(who.scopes):
                 # Answered here rather than by the SDK so the challenge names the
                 # scope needed, as the MCP authorization spec asks.
+                args = await _requested_arguments(tool, receive) if tool else None
                 await _audit_decision(
-                    self.audit, request_id, who, tool, None, "deny", "insufficient_scope"
+                    self.audit, request_id, who, tool, args, "deny", "insufficient_scope"
                 )
                 await self._insufficient_scope(list(policy.SCOPES_SUPPORTED), send)
                 return
@@ -126,8 +163,10 @@ class GatewayPolicyMiddleware:
                         self.audit, request_id, who, tool, None, "deny", "unknown_tool"
                     )
                 elif missing:
+                    # What the agent asked for matters to a reviewer even when refused.
+                    args = await _requested_arguments(tool, receive)
                     await _audit_decision(
-                        self.audit, request_id, who, tool, None, "deny", "insufficient_scope"
+                        self.audit, request_id, who, tool, args, "deny", "insufficient_scope"
                     )
                     await self._insufficient_scope(sorted(policy.TOOL_SCOPES[tool]), send)
                     return

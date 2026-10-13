@@ -117,6 +117,11 @@ class _Head:
     hash: str = GENESIS
 
 
+def looks_like_credential(key: Any) -> bool:
+    """True if an argument name suggests a credential, which is never recorded."""
+    return bool(_SECRET_KEY.search(str(key)))
+
+
 def _canonical(obj: Any) -> str:
     return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
@@ -236,7 +241,7 @@ class AuditLog:
         if not arguments:
             return
         for key in arguments:
-            if _SECRET_KEY.search(str(key)):
+            if looks_like_credential(key):
                 raise AuditError(
                     f"refusing to record argument that looks like a credential: {key!r}"
                 )

@@ -162,7 +162,42 @@ def test_read_only_token_gets_step_up_challenge(make):
     assert r.status_code == 403
     assert 'scope="boiler:write"' in r.headers["www-authenticate"]
     assert device.commands == []
-    assert rows(audit)[-1][1:3] == ("deny", "insufficient_scope")
+    assert rows(audit)[-1][1:5] == ("deny", "insufficient_scope", TOOL, '{"celsius":55}')
+
+
+def test_refused_call_records_arguments_only_for_the_named_tool(make):
+    client, audit, _ = make()
+    body = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {"name": "get_boiler_status", "arguments": {"celsius": 55}},
+    }
+    headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/event-stream",
+        "MCP-Protocol-Version": LATEST_PROTOCOL_VERSION,
+        "Mcp-Method": "tools/call",
+        "Mcp-Name": TOOL,  # a header that doesn't match the body
+        "Authorization": f"Bearer {token(scope='boiler:read')}",
+    }
+    r = client.post("/mcp", headers=headers, content=json.dumps(body))
+    assert r.status_code == 403
+    assert rows(audit)[-1][1:5] == ("deny", "insufficient_scope", TOOL, None)
+
+
+def test_refused_call_drops_credential_like_arguments(make):
+    client, audit, _ = make()
+    r = call(client, {"celsius": 55, "api_key": "x"}, tok=token(scope="boiler:read"))
+    assert r.status_code == 403  # still refused and recorded, not an audit failure
+    assert rows(audit)[-1][1:5] == ("deny", "insufficient_scope", TOOL, None)
+
+
+def test_refused_call_ignores_an_oversized_body(make):
+    client, audit, _ = make()
+    r = call(client, {"celsius": 55, "note": "x" * 20_000}, tok=token(scope="boiler:read"))
+    assert r.status_code == 403
+    assert rows(audit)[-1][1:5] == ("deny", "insufficient_scope", TOOL, None)
 
 
 @pytest.mark.parametrize(
