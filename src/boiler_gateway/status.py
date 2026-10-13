@@ -26,6 +26,9 @@ FIELDS: tuple[tuple[str, str], ...] = (
     ("space_heating_supply_c", "navien_sh_outlet_temp"),
     ("space_heating_return_c", "navien_sh_return_temp"),
     ("space_heating_setpoint_c", "navien_sh_set_temp"),
+    # Outdoor sensor: with outdoor reset, the boiler may adjust heating from it.
+    # Without a sensor the device reports NaN, shown as a null value.
+    ("outdoor_temperature_c", "navien_outdoor_temp"),
     ("error_code", "navien_error_code"),
     ("error_level", "navien_error_level"),
     ("error_count", "navien_error_count"),

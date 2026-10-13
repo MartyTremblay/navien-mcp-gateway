@@ -23,6 +23,7 @@ class FakeDevice:
             "navien_operating_state": Reading("navien_operating_state", "", "Standby", "", now),
             "navien_outlet_temp": Reading("navien_outlet_temp", "", 51.0, "°C", now),
             "navien_error_code": Reading("navien_error_code", "", 0.0, "", now),
+            "navien_outdoor_temp": Reading("navien_outdoor_temp", "", 12.0, "°C", now),
             "navien_ip_address": Reading("navien_ip_address", "", "192.0.2.43", "", now),
         }
 
@@ -136,6 +137,7 @@ def test_valid_call_returns_curated_status_and_is_audited(env):
     assert status["device_connected"] is True
     assert status["values"]["tank_temperature_c"]["value"] == 51.0
     assert status["values"]["error_code"]["value"] == 0  # integer, not 0.0
+    assert status["values"]["outdoor_temperature_c"]["value"] == 12.0
     assert "last_reported" in status["values"]["error_code"]  # not "last_changed": see T12
     assert "last_changed" not in r.text
     assert status["device_connected_since"] is not None
@@ -277,3 +279,13 @@ def test_older_client_without_scope_is_refused_and_audited_as_deny(env):
     assert "Standby" not in r.text
     decisions = [row[1] for row in audit_rows(audit)]
     assert decisions == ["deny"]  # never recorded as allowed
+
+
+def test_missing_outdoor_sensor_is_shown_as_null_not_a_number():
+    from boiler_gateway.device import DeviceSnapshot
+    from boiler_gateway.status import build_status
+
+    now = time.time()
+    reading = Reading("navien_outdoor_temp", "", None, "°C", now)  # NaN from the device
+    status = build_status(DeviceSnapshot(True, {"navien_outdoor_temp": reading}, now, now))
+    assert status["values"]["outdoor_temperature_c"]["value"] is None
