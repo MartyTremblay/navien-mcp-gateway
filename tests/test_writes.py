@@ -149,6 +149,32 @@ def test_write_tool_is_hidden_when_writes_are_disabled(make):
     assert rows(audit)[-1][:3] == ("decision", "deny", "unknown_tool")
 
 
+@pytest.mark.parametrize("writes", [True, False])
+def test_instructions_match_the_tools_offered(make, writes):
+    client, _, _ = make(writes=writes)
+    init = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {
+            "protocolVersion": "2025-11-25",
+            "capabilities": {},
+            "clientInfo": {"name": "test", "version": "1"},
+        },
+    }
+    headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/event-stream",
+        "MCP-Protocol-Version": "2025-11-25",
+        "Authorization": f"Bearer {token(scope=RW)}",
+    }
+    text = client.post("/mcp", headers=headers, content=json.dumps(init)).json()["result"][
+        "instructions"
+    ]
+    assert text.startswith("Read-only") is not writes
+    assert ("boiler confirmed" in text) is writes
+
+
 def test_write_tool_is_listed_when_enabled(make):
     client, _, _ = make()
     tools = {t["name"]: t for t in call(client, method="tools/list").json()["result"]["tools"]}

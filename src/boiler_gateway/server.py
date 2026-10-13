@@ -61,10 +61,22 @@ log = logging.getLogger(__name__)
 MCP_PATH = "/mcp"
 _REQUEST_ID: contextvars.ContextVar[str | None] = contextvars.ContextVar("request_id", default=None)
 
-INSTRUCTIONS = (
-    "Read-only access to a home boiler through a governed gateway. Values come from the "
-    "boiler's controller; if device_connected is false, treat every value as stale."
+_STALENESS = (
+    "Values come from the boiler's controller; if device_connected is false, treat every "
+    "value as stale."
 )
+
+
+def instructions(writes_enabled: bool) -> str:
+    """What the model is told about the server; it must match the tools actually offered."""
+    if not writes_enabled:
+        return f"Read-only access to a home boiler through a governed gateway. {_STALENESS}"
+    return (
+        "Access to a home boiler through a governed gateway. Changes are limited by the "
+        "gateway's own bounds and rate limits, and need the boiler:write permission. A change "
+        "has happened only when the result says the boiler confirmed it; never retry an "
+        f"unconfirmed change without checking the status first. {_STALENESS}"
+    )
 
 
 async def _audit_decision(audit: AuditLog, *args: Any) -> None:
@@ -233,7 +245,7 @@ def build_app(
 
     mcp = MCPServer(
         name="boiler-gateway",
-        instructions=INSTRUCTIONS,
+        instructions=instructions(settings.gateway_writes_enabled),
         token_verifier=verifier,
         auth=AuthSettings(
             issuer_url=settings.issuer,
