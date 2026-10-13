@@ -79,7 +79,7 @@ Status: **closed** (2026-10-13). Built and tested against a fake boiler, then ve
 
 - Space-heating setpoint, bounded to 40–70 °C.
 - Policy (bounds, rate limits, risk classification) becomes configuration under version control rather than code per tool.
-- Note: if the boiler's outdoor reset curve is active, it can override the setpoint. The tool's result must say so rather than report success.
+- Outdoor reset **is enabled** on this boiler (confirmed by the installer), and the controller doesn't expose the setting or the curve. So it's unknown whether the space-heating setpoint is the heating target or only the top of the curve. Before designing the tool, observe it: how `space_heating_setpoint_c` and the supply temperature relate to the outdoor temperature over several heating cycles, with no writes. The tool's result must say what a change actually does, rather than report success because the setpoint was accepted.
 
 **Exit criteria:** as for increment 2, for the new tool. Policy changes are reviewed like code.
 

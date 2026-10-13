@@ -24,6 +24,7 @@ This is a learning project: the goal is to practise enterprise AI architecture p
 |---|---|
 | Boiler | Navien NHB-110H, heat-only, one space-heating zone + indirect DHW tank |
 | Controller | Waveshare ESP32-S3-RS485-CAN on the boiler's NaviLink RS485 port |
+| Outdoor reset | **Enabled** (confirmed by the installer), with an outdoor sensor (`navien_outdoor_temp`, whole degrees, NaN with no probe). The firmware exposes the outdoor temperature only, not the reset setting or curve |
 | Network | LAN only; host and address are in `.env` (`ESPHOME_HOST`) and `CLAUDE.local.md` |
 | ESPHome native API | port 6053, **Noise-encrypted**: the key goes in `.env`, never commit it |
 | ESPHome web server | removed from the firmware (ADR 0001); the native API is the only network path |
