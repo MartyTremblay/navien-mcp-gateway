@@ -25,7 +25,7 @@ The reasoning matters as much as the code. Every significant choice is an [archi
 | Increment | What | Status |
 |---|---|---|
 | 1 | Read-only gateway: one status tool, identity, isolation, audit | Done and deployed; [compliance check](docs/compliance/increment-1.md) passed |
-| 2 | First bounded write: hot-water tank setpoint | Built and tested ([ADR 0008](docs/adr/0008-write-policy-for-bounded-setpoints.md)); writes switched off until the first supervised live test |
+| 2 | First bounded write: hot-water tank setpoint | Done and verified with a supervised live write; [compliance check](docs/compliance/increment-2.md) passed. Writes switched off between test sessions |
 | 3 | Second write, policy as versioned configuration | Planned |
 | 4 | Human approval for high-risk actions | Planned |
 | 5 | Hardening and evidence, including a NIST AI RMF mapping | Planned |
@@ -38,7 +38,7 @@ Details in the [roadmap](docs/architecture/03-roadmap.md).
 2. **[Principles](docs/architecture/00-principles.md)** and **[vision](docs/architecture/01-vision.md):** what the gateway must guarantee, and why.
 3. **[Architecture decision records](docs/adr/):** the choices, the options considered, and the trade-offs, including where reality changed the plan.
 4. **[Threat model](docs/threat-model.md):** threats, controls and evidence, plus lessons from real incidents during the build.
-5. **[Compliance check, increment 1](docs/compliance/increment-1.md):** the end-of-increment review against the principles.
+5. **Compliance checks, [increment 1](docs/compliance/increment-1.md) and [increment 2](docs/compliance/increment-2.md):** the end-of-increment reviews against the principles. Increment 2's includes what the first live write found.
 6. **[Frameworks and standards](docs/standards.md):** the 39 frameworks, standards and specifications the project relies on, and where each applies.
 
 The method is a lightweight version of the TOGAF Architecture Development Method; the [architecture index](docs/architecture/README.md) maps each phase to its document.

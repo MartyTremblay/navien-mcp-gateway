@@ -1,6 +1,6 @@
 # Threat model
 
-Version 2: increment 1 (read-only gateway, deployed) plus increment 2 (first bounded write, built and tested, writes disabled in deployment). Status: draft. Updated at the end of each increment as part of its compliance check ([roadmap, phase G](architecture/03-roadmap.md#implementation-governance-phase-g)).
+Version 2: increment 1 (read-only gateway, deployed) plus increment 2 (first bounded write, verified live on 2026-10-13, writes disabled in deployment between test sessions). Status: draft. Updated at the end of each increment as part of its compliance check ([roadmap, phase G](architecture/03-roadmap.md#implementation-governance-phase-g)).
 
 Each threat lists its controls and the evidence that the controls work: an automated test, or a recorded check against the lab. Categories use STRIDE and, where the threat involves the AI agent, the OWASP Top 10 for LLM Applications (2025).
 

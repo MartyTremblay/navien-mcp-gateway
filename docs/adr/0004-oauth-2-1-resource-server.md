@@ -50,3 +50,14 @@ What the authorization server must support:
 - **Support for newer standards varies.** Resource indicators, Client ID Metadata Documents and RFC 9207 are newer than core OAuth, and identity providers support them unevenly. ADR 0005 must check each candidate against the list above.
 - **Client support needs checking.** Each MCP client used with the gateway must support MCP's OAuth flow for this specification revision. This is confirmed per client during implementation.
 - **More setup.** The gateway cannot be used until an identity provider is running and configured. Testing needs tokens from that provider too, with test clients and test users.
+
+## Update (2026-10-13): step-up isn't supported by the client in use
+
+The design expects a client holding only `boiler:read` to step up when a write tool answers 403 `insufficient_scope` naming `boiler:write`. At the first live write, Claude Code didn't. It reported that the server "needs additional permissions" and, on re-authentication, requested the same scopes as before. Its documentation says so: "Claude Code requests the pinned scopes rather than the scope the server named, so if you authenticate again without adding it, the token you get still lacks it." The gateway's side worked: both write attempts were refused and audited.
+
+**Decision:** keep the gateway as designed. It advertises only `boiler:read`, and it still names the missing scope in its challenge for clients that can step up. For a client that can't, write access is granted for a limited time and then revoked:
+
+1. The owner pins `boiler:read boiler:write` in the client's configuration (`oauth.scopes`), re-authenticates, and approves the write permission on the consent screen.
+2. After the session, the owner removes the pinned scope, re-authenticates (back to read-only), and ends the client's sessions at the identity provider, so the refresh token that carried `boiler:write` can't be used again.
+
+**Trade-off, accepted:** consent happens at sign-in for the whole session, not at the moment an agent first needs to write. While the scope is pinned, every token from that client can write, so the kill switch and the gateway's bounds and rate limits are the controls that remain. Revisit when the client supports step-up. The coding agent can't do step 1 for itself: its own tool blocked an attempt to edit the client configuration as self-modification, so a human always makes the change.
