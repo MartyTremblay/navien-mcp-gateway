@@ -53,7 +53,7 @@ What the authorization server must support:
 
 ## Update (2026-10-13): step-up isn't supported by the client in use
 
-The design expects a client holding only `boiler:read` to step up when a write tool answers 403 `insufficient_scope` naming `boiler:write`. At the first live write, Claude Code didn't. It reported that the server "needs additional permissions" and, on re-authentication, requested the same scopes as before. Its documentation says so: "Claude Code requests the pinned scopes rather than the scope the server named, so if you authenticate again without adding it, the token you get still lacks it." The gateway's side worked: both write attempts were refused and audited.
+The design expects a client holding only `boiler:read` to step up when a write tool answers 403 `insufficient_scope` naming `boiler:write`. At the first live write, Claude Code (VS Code extension 2.1.296) didn't. It reported that the server "needs additional permissions" and, on re-authentication, requested the same scopes as before. Its documentation (as of October 2026) says so: "Claude Code requests the pinned scopes rather than the scope the server named, so if you authenticate again without adding it, the token you get still lacks it." The gateway's side worked: both write attempts were refused and audited.
 
 **Decision:** keep the gateway as designed. It advertises only `boiler:read`, and it still names the missing scope in its challenge for clients that can step up. For a client that can't, write access is granted for a limited time and then revoked:
 
