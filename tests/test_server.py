@@ -144,7 +144,7 @@ def test_valid_call_returns_curated_status_and_is_audited(env):
     assert rows[-2] == (
         "decision",
         "allow",
-        None,
+        "scope_ok",
         "get_boiler_status",
         "person-1",
         "claude-code",
@@ -246,7 +246,15 @@ def test_older_client_without_routing_headers_is_served_and_audited(env):
     r = client.post("/mcp", headers=h, content=json.dumps(call))
     assert r.status_code == 200 and "Standby" in r.text
     rows = audit_rows(audit)
-    assert ("decision", "allow", None, "get_boiler_status", "person-1", "claude-code", None) in rows
+    assert (
+        "decision",
+        "allow",
+        "scope_ok",
+        "get_boiler_status",
+        "person-1",
+        "claude-code",
+        None,
+    ) in rows
     assert rows[-1][0] == "outcome" and rows[-1][6] == "ok"
 
 

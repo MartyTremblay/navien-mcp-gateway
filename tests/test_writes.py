@@ -244,6 +244,12 @@ def test_values_outside_policy_never_reach_the_device(make, value, reason):
     assert rows(audit)[-1][1:3] == ("deny", reason)
 
 
+def test_refusal_after_the_scope_check_reads_as_two_steps(make):
+    client, audit, _ = make()
+    call(client, {"celsius": 65})
+    assert [r[1:3] for r in rows(audit)[-2:]] == [("allow", "scope_ok"), ("deny", "out_of_bounds")]
+
+
 def test_confirmed_write_with_audit_before_and_after(make):
     client, audit, device = make()
     out = result_of(call(client, {"celsius": 55}))

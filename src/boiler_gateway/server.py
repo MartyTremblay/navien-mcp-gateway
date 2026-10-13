@@ -183,7 +183,11 @@ class GatewayPolicyMiddleware:
                     await self._insufficient_scope(sorted(policy.TOOL_SCOPES[tool]), send)
                     return
                 else:
-                    await _audit_decision(self.audit, request_id, who, tool, None, "allow")
+                    # Only the scope check: a write tool still applies its own policy
+                    # and records that decision (`policy_ok` or a refusal) after this.
+                    await _audit_decision(
+                        self.audit, request_id, who, tool, None, "allow", "scope_ok"
+                    )
             else:
                 # Listing and other protocol requests: recorded, no device access.
                 await _audit_decision(
@@ -286,7 +290,9 @@ def build_app(
             raise ToolError("Not authorized: this tool needs the boiler:read scope.")
         if request_id is None:  # the client didn't send routing headers
             request_id = str(uuid.uuid4())
-            await _audit_decision(audit, request_id, who, "get_boiler_status", None, "allow")
+            await _audit_decision(
+                audit, request_id, who, "get_boiler_status", None, "allow", "scope_ok"
+            )
 
         result = build_status(device.snapshot())
         latency_ms = round((time.perf_counter() - started) * 1000)
