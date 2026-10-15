@@ -33,7 +33,7 @@ This is a learning project: the goal is to practise enterprise AI architecture p
 Useful entities (ESPHome object names may differ from HA entity IDs; confirm via the API's entity list):
 
 - Read: SH supply/return temp, tank temp ("Outlet Temp" on NHB-H), SH set temp, DHW tank set temp, DHW boiler set temp, heating mode, operating state, burner %, error code/level, error count, gas usage, connection status.
-- Write (numbers): `SH Setpoint` (40–82 °C, 0.5 steps), `DHW Setpoint` (40–82 °C, but tank range used is 40–70 °C); water heater / climate target = tank set temp.
+- Write (numbers): `SH Setpoint` (40–82 °C, 0.5 steps), `DHW Setpoint` (entity accepts 40–82 °C; the NHB-H tank range is 30–65 °C per Navien's manual, p. 107, and the boiler applies whole degrees only); water heater / climate target = tank set temp.
 - Write (switches/buttons): main power, allow recirculation, hot button. Treat these as high risk.
 
 Protocol facts that matter here:
